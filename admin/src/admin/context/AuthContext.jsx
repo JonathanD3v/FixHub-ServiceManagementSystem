@@ -51,28 +51,35 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    console.log("AuthContext login called");
     try {
       setError(null);
-      console.log("Making API call...");
       const response = await postMethod(LOGIN_API, { email, password });
-      console.log("API response received:", response);
+      const token = response.accessToken || response.token;
+      const loggedInUser = response.user;
+
+      if (!token || !loggedInUser) {
+        throw new Error("Invalid login response. Please try again.");
+      }
 
       // Store token and user data
-      localStorage.setItem("token", response.accessToken);
-      localStorage.setItem("user", JSON.stringify(response.user));
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
 
-      setUser(response.user);
-      console.log("User set to:", response.user);
+      setUser(loggedInUser);
       showToast("Login successful!", "success");
-      return response.user;
+      return loggedInUser;
     } catch (err) {
-      console.error("AuthContext login error:", err);
+      const errorMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Unable to login";
       localStorage.removeItem("user");
+      localStorage.removeItem("token");
       setUser(null);
 
-      setError(err.message);
-      showToast(err.message, "error");
+      setError(errorMessage);
+      showToast(errorMessage, "error");
       throw err;
     }
   };

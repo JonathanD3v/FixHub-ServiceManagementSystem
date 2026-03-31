@@ -12,8 +12,6 @@ const Register = () => {
     address: {
       street: '',
       city: '',
-      state: '',
-      country: ''
     }
   });
   const [error, setError] = useState('');
@@ -209,38 +207,10 @@ const Register = () => {
                   />
                 </div>
 
-                <div className="group">
-                  <label htmlFor="address.state" className="block text-sm font-medium text-white/90 mb-1">
-                    State
-                  </label>
-                  <input
-                    id="address.state"
-                    name="address.state"
-                    type="text"
-                    required
-                    className="appearance-none block w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl shadow-sm placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition duration-150 ease-in-out text-base"
-                    placeholder="State"
-                    value={formData.address.state}
-                    onChange={handleChange}
-                  />
-                </div>
+                
               </div>
 
-              <div className="group">
-                <label htmlFor="address.country" className="block text-sm font-medium text-white/90 mb-1">
-                  Country
-                </label>
-                <input
-                  id="address.country"
-                  name="address.country"
-                  type="text"
-                  required
-                  className="appearance-none block w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl shadow-sm placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent transition duration-150 ease-in-out text-base"
-                  placeholder="Country"
-                  value={formData.address.country}
-                  onChange={handleChange}
-                />
-              </div>
+              
             </div>
           </div>
 

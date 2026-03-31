@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { sendWelcomeUserEmail } = require("../utils/emailService");
 
 const JWT_KEY = process.env.JWT_KEY;
 
@@ -63,6 +64,10 @@ exports.register = async (req, res) => {
     });
 
     await user.save();
+
+    sendWelcomeUserEmail(user).catch((err) => {
+      console.error("Welcome email failed:", err?.message || err);
+    });
 
     // Generate token
     const token = jwt.sign({ userId: user._id, role: user.role }, JWT_KEY, {

@@ -1,15 +1,38 @@
 const nodemailer = require("nodemailer");
 
-// Email transporter configuration
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: process.env.EMAIL_PORT,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const APP_NAME = process.env.SHOP_NAME || "POS System";
+const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_FROM;
+
+const isEmailConfigured = () =>
+  Boolean(
+    process.env.EMAIL_HOST &&
+      process.env.EMAIL_PORT &&
+      process.env.EMAIL_USER &&
+      process.env.EMAIL_PASS &&
+      process.env.EMAIL_FROM,
+  );
+
+let transporter = null;
+const getTransporter = () => {
+  if (!isEmailConfigured()) {
+    return null;
+  }
+
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: process.env.EMAIL_HOST,
+      port: Number(process.env.EMAIL_PORT),
+      secure: Number(process.env.EMAIL_PORT) === 465,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+  }
+
+  return transporter;
+};
 
 // Email templates
 const emailTemplates = {
@@ -104,21 +127,97 @@ const emailTemplates = {
       <p>If you did not request this, please ignore this email.</p>
     `,
   }),
+  orderStatusUpdated: (data) => ({
+    subject: `Order #${data.orderNumber} is now ${data.status}`,
+    html: `
+      <h2>Order status updated</h2>
+      <p>Hi ${data.customerName},</p>
+      <p>Your order <strong>#${data.orderNumber}</strong> is now <strong>${data.status}</strong>.</p>
+      <p><strong>Total:</strong> $${Number(data.totalAmount || 0).toFixed(2)}</p>
+      <p>You can review your order in your account.</p>
+      <p><a href="${APP_BASE_URL}">Open website</a></p>
+      <br/>
+      <p>Thank you for choosing ${APP_NAME}.</p>
+    `,
+  }),
+  orderRefunded: (data) => ({
+    subject: `Refund processed for Order #${data.orderNumber}`,
+    html: `
+      <h2>Your refund has been processed</h2>
+      <p>Hi ${data.customerName},</p>
+      <p>Order <strong>#${data.orderNumber}</strong> has been refunded.</p>
+      <p><strong>Refund Amount:</strong> $${Number(data.refundAmount || 0).toFixed(2)}</p>
+      <p><strong>Reason:</strong> ${data.reason || "N/A"}</p>
+      <br/>
+      <p>If you have questions, reply to this email.</p>
+    `,
+  }),
+  adminNewOrderAlert: (data) => ({
+    subject: `New order placed: #${data.orderNumber}`,
+    html: `
+      <h2>New order received</h2>
+      <p><strong>Order:</strong> #${data.orderNumber}</p>
+      <p><strong>Customer:</strong> ${data.customerName} (${data.customerEmail})</p>
+      <p><strong>Total:</strong> $${Number(data.totalAmount || 0).toFixed(2)}</p>
+      <p><strong>Items:</strong> ${data.itemCount}</p>
+      <p><a href="${APP_BASE_URL}/admin/orders">Open admin orders</a></p>
+    `,
+  }),
+  welcomeUser: (data) => ({
+    subject: `Welcome to ${APP_NAME}`,
+    html: `
+      <h2>Welcome, ${data.name || "there"}!</h2>
+      <p>Your account has been created successfully.</p>
+      <p>You can now place orders and track your repairs online.</p>
+      <p><a href="${APP_BASE_URL}">Start shopping</a></p>
+      <br/>
+      <p>Thanks for joining ${APP_NAME}.</p>
+    `,
+  }),
+  serviceRequestReceived: (data) => ({
+    subject: `Service request received - #${data.requestNumber}`,
+    html: `
+      <h2>We received your service request</h2>
+      <p>Hi ${data.customerName},</p>
+      <p>Your request <strong>#${data.requestNumber}</strong> is now in queue.</p>
+      <p><strong>Device:</strong> ${data.deviceModel || data.deviceType || "-"}</p>
+      <p><strong>Issue:</strong> ${data.issueDescription || "-"}</p>
+      <p>We'll notify you when a technician is assigned.</p>
+      <br/>
+      <p>Thank you for choosing ${APP_NAME}.</p>
+    `,
+  }),
 };
 
 // Send email function
 const sendEmail = async (to, type, data) => {
   try {
+    const transport = getTransporter();
+    if (!transport) {
+      console.warn(
+        `[Email disabled] Missing SMTP env, skipped "${type}" email to ${to}`,
+      );
+      return { success: false, skipped: true, reason: "EMAIL_NOT_CONFIGURED" };
+    }
+
+    if (!to) {
+      return { success: false, skipped: true, reason: "MISSING_RECIPIENT" };
+    }
+
+    if (!emailTemplates[type]) {
+      return { success: false, skipped: true, reason: "UNKNOWN_TEMPLATE" };
+    }
+
     const template = emailTemplates[type](data);
 
     const mailOptions = {
-      from: `"${process.env.SHOP_NAME}" <${process.env.EMAIL_FROM}>`,
+      from: `"${APP_NAME}" <${process.env.EMAIL_FROM}>`,
       to: to,
       subject: template.subject,
       html: template.html,
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const info = await transport.sendMail(mailOptions);
     console.log(`Email sent: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
@@ -180,10 +279,68 @@ const sendOrderReadyNotification = async (order) => {
   await order.updateOne({ "notificationSent.ready": true });
 };
 
+const sendOrderStatusUpdatedNotification = async (order) => {
+  if (!order?.customerEmail || !order?.orderStatus) return;
+
+  await sendEmail(order.customerEmail, "orderStatusUpdated", {
+    customerName: order.customerName || "Customer",
+    orderNumber: order.orderNumber || order._id,
+    status: order.orderStatus,
+    totalAmount: order.totalAmount || 0,
+  });
+};
+
+const sendOrderRefundNotification = async (order, reason = "") => {
+  if (!order?.customerEmail) return;
+
+  await sendEmail(order.customerEmail, "orderRefunded", {
+    customerName: order.customerName || "Customer",
+    orderNumber: order.orderNumber || order._id,
+    refundAmount: order.refund?.amount || order.totalAmount || 0,
+    reason,
+  });
+};
+
+const sendAdminNewOrderAlert = async (order) => {
+  if (!ADMIN_EMAIL) return;
+
+  await sendEmail(ADMIN_EMAIL, "adminNewOrderAlert", {
+    orderNumber: order.orderNumber || order._id,
+    customerName: order.customerName || "Unknown",
+    customerEmail: order.customerEmail || "-",
+    totalAmount: order.totalAmount || 0,
+    itemCount: Array.isArray(order.items) ? order.items.length : 0,
+  });
+};
+
+const sendWelcomeUserEmail = async (user) => {
+  if (!user?.email) return;
+  await sendEmail(user.email, "welcomeUser", {
+    name: user.name || "Customer",
+  });
+};
+
+const sendServiceRequestReceivedNotification = async (serviceRequest) => {
+  if (!serviceRequest?.customerEmail) return;
+  await sendEmail(serviceRequest.customerEmail, "serviceRequestReceived", {
+    customerName: serviceRequest.customerName || "Customer",
+    requestNumber: serviceRequest.requestNumber || serviceRequest._id,
+    deviceModel: serviceRequest.deviceModel,
+    deviceType: serviceRequest.deviceType,
+    issueDescription: serviceRequest.issueDescription,
+  });
+};
+
 module.exports = {
   sendEmail,
   sendServiceAssignedNotification,
   sendServiceCompletedNotification,
   sendOrderConfirmedNotification,
   sendOrderReadyNotification,
+  sendOrderStatusUpdatedNotification,
+  sendOrderRefundNotification,
+  sendAdminNewOrderAlert,
+  sendWelcomeUserEmail,
+  sendServiceRequestReceivedNotification,
+  isEmailConfigured,
 };

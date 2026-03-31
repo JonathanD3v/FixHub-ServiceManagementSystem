@@ -11,41 +11,44 @@ import Orders from "./pages/UserOrders";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ThemeProvider } from "./contexts/ThemeContext"; 
 import PrivateRoute from "./components/PrivateRoute";
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/products/:id" element={<ProductDetail />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route
-              path="/cart"
-              element={
-                <PrivateRoute>
-                  <Cart />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/orders/:id"
-              element={
-                <PrivateRoute>
-                  <OrderDetail />
-                </PrivateRoute>
-              }
-            />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-          </Routes>
-        </div>
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+            <Navbar />
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/products/:id" element={<ProductDetail />} />
+              <Route path="/products" element={<Products />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/orders" element={<Orders />} />
+              <Route
+                path="/cart"
+                element={
+                  <PrivateRoute>
+                    <Cart />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/orders/:id"
+                element={
+                  <PrivateRoute>
+                    <OrderDetail />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+            </Routes>
+          </div>
+        </Router>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

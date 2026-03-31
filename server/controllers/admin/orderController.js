@@ -1,6 +1,12 @@
 const Order = require("../../models/Order");
 const AppError = require("../../utils/appError");
 const catchAsync = require("../../utils/catchAsync");
+const TimezoneService = require("../../services/TimezoneService");
+const {
+  sendOrderReadyNotification,
+  sendOrderStatusUpdatedNotification,
+  sendOrderRefundNotification,
+} = require("../../utils/emailService");
 
 const normalizeOrderResponse = (orderDoc) => {
   if (!orderDoc) return null;
@@ -9,6 +15,8 @@ const normalizeOrderResponse = (orderDoc) => {
   order.status = order.orderStatus;
   order.total = order.totalAmount;
   order.shippingAddress = order.customerAddress || order.shippingAddress || {};
+  order.createdAtYangon = TimezoneService.formatForApi(order.createdAt);
+  order.updatedAtYangon = TimezoneService.formatForApi(order.updatedAt);
   return order;
 };
 
@@ -127,6 +135,17 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
 
   await order.save();
 
+  if (status === "ready") {
+    sendOrderReadyNotification(order).catch((err) => {
+      console.error("Order ready email failed:", err?.message || err);
+    });
+  }
+  if (["processing", "shipped", "delivered", "completed", "cancelled"].includes(status)) {
+    sendOrderStatusUpdatedNotification(order).catch((err) => {
+      console.error("Order status email failed:", err?.message || err);
+    });
+  }
+
   const updatedOrder = await Order.findById(id)
     .populate("user", "name email")
     .populate("items.productId", "name price images");
@@ -163,6 +182,10 @@ exports.processRefund = catchAsync(async (req, res) => {
   order.paymentStatus = "refunded";
 
   await order.save();
+
+  sendOrderRefundNotification(order, reason).catch((err) => {
+    console.error("Refund email failed:", err?.message || err);
+  });
 
   const updatedOrder = await Order.findById(req.params.id)
     .populate("user", "name email")

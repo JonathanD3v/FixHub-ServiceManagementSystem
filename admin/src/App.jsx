@@ -32,6 +32,20 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+const PublicLoginRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (user) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <Router>
@@ -39,7 +53,14 @@ function App() {
         <Toaster position="top-right" />
         <Routes>
           {/* Public Routes */}
-          <Route path="/admin/login" element={<Login />} />
+          <Route
+            path="/admin/login"
+            element={
+              <PublicLoginRoute>
+                <Login />
+              </PublicLoginRoute>
+            }
+          />
 
           {/* Protected Admin Routes */}
           <Route

@@ -2,6 +2,14 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
 const mongoose = require("mongoose");
+const TimezoneService = require("../services/TimezoneService");
+const {
+  sendOrderConfirmedNotification,
+  sendOrderReadyNotification,
+  sendOrderStatusUpdatedNotification,
+  sendOrderRefundNotification,
+  sendAdminNewOrderAlert,
+} = require("../utils/emailService");
 
 const mapOrderDto = (orderDoc) => {
   if (!orderDoc) return null;
@@ -11,6 +19,8 @@ const mapOrderDto = (orderDoc) => {
   order.total = order.totalAmount;
   order.shippingAddress = order.customerAddress || order.shippingAddress || {};
   order.user = order.user || null;
+  order.createdAtYangon = TimezoneService.formatForApi(order.createdAt);
+  order.updatedAtYangon = TimezoneService.formatForApi(order.updatedAt);
 
   if (order.items && Array.isArray(order.items)) {
     order.items = order.items.map((item) => {
@@ -182,6 +192,14 @@ exports.createOrder = async (req, res) => {
 
     await order.save();
 
+    // Fire-and-forget email notifications; should never break checkout.
+    sendOrderConfirmedNotification(order).catch((err) => {
+      console.error("Order confirmation email failed:", err?.message || err);
+    });
+    sendAdminNewOrderAlert(order).catch((err) => {
+      console.error("Admin new order email failed:", err?.message || err);
+    });
+
     const populatedOrder = await Order.findById(order._id)
       .populate("user", "name email")
       .populate("items.productId", "name price images");
@@ -318,6 +336,17 @@ exports.updateOrderStatus = async (req, res) => {
 
     await order.save();
 
+    if (status === "ready") {
+      sendOrderReadyNotification(order).catch((err) => {
+        console.error("Order ready email failed:", err?.message || err);
+      });
+    }
+    if (["processing", "shipped", "delivered", "completed", "cancelled"].includes(status)) {
+      sendOrderStatusUpdatedNotification(order).catch((err) => {
+        console.error("Order status email failed:", err?.message || err);
+      });
+    }
+
     const populatedOrder = await Order.findById(order._id)
       .populate("user", "name email")
       .populate("items.productId", "name price images");
@@ -373,6 +402,10 @@ exports.processRefund = async (req, res) => {
     });
 
     await order.save();
+
+    sendOrderRefundNotification(order, reason).catch((err) => {
+      console.error("Refund email failed:", err?.message || err);
+    });
 
     const populatedOrder = await Order.findById(order._id)
       .populate("user", "name email")

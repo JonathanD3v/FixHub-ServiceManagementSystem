@@ -2,6 +2,7 @@ const User = require("../../models/User");
 const Order = require("../../models/Order");
 const AppError = require("../../utils/appError");
 const catchAsync = require("../../utils/catchAsync");
+const TimezoneService = require("../../services/TimezoneService");
 
 // Get all customers with pagination and filtering
 exports.getAllCustomers = catchAsync(async (req, res) => {
@@ -91,17 +92,26 @@ exports.getCustomerOrders = catchAsync(async (req, res) => {
 
   const [orders, total] = await Promise.all([
     Order.find({ user: req.params.id })
-      .populate("items.product", "name price")
+      .populate("items.productId", "name price images")
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 }),
     Order.countDocuments({ user: req.params.id }),
   ]);
 
+  const normalizedOrders = orders.map((orderDoc) => {
+    const order = orderDoc.toObject ? orderDoc.toObject() : orderDoc;
+    order.status = order.orderStatus;
+    order.total = order.totalAmount;
+    order.createdAtYangon = TimezoneService.formatForApi(order.createdAt);
+    order.updatedAtYangon = TimezoneService.formatForApi(order.updatedAt);
+    return order;
+  });
+
   res.json({
     status: "success",
     data: {
-      orders,
+      orders: normalizedOrders,
       pagination: {
         page,
         limit,

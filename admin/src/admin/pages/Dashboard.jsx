@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMethod } from "../services/index.jsx";
+import DashboardPresenter from "../presenters/DashboardPresenter.js";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5555/api";
 const API_BASE_URL = API_URL.replace("/api", "");
@@ -23,6 +24,7 @@ const Dashboard = () => {
     lowStockProducts: [],
   });
   const [loading, setLoading] = useState(true);
+  const presenter = new DashboardPresenter(stats);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -49,14 +51,23 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+      <div className="rounded-2xl bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 p-6 text-white shadow-xl">
+        <p className="text-sm text-indigo-100">Welcome back</p>
+        <h1 className="mt-1 text-2xl sm:text-3xl font-semibold">
+          {user?.name ? `${user.name}'s Dashboard` : "Admin Dashboard"}
+        </h1>
+        <p className="mt-2 text-sm text-indigo-100/90">
+          Track sales, inventory, and store performance in one place.
+        </p>
+        <p className="mt-2 text-xs text-indigo-200/90">
+          Timezone: {stats?.timezone || "Asia/Yangon"}
+        </p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {/* Today's Sales */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -77,13 +88,13 @@ const Dashboard = () => {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-slate-500 truncate">
                     Today's Sales
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    ${stats.sales.today.total.toFixed(2)}
+                  <dd className="text-2xl font-semibold text-slate-900">
+                    {presenter.money(stats.sales.today.total)}
                   </dd>
-                  <dd className="text-sm text-gray-500">
+                  <dd className="text-sm text-slate-500">
                     {stats.sales.today.count} orders
                   </dd>
                 </dl>
@@ -93,7 +104,7 @@ const Dashboard = () => {
         </div>
 
         {/* Monthly Sales */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -114,13 +125,13 @@ const Dashboard = () => {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-slate-500 truncate">
                     Monthly Sales
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    ${stats.sales.monthly.total.toFixed(2)}
+                  <dd className="text-2xl font-semibold text-slate-900">
+                    {presenter.money(stats.sales.monthly.total)}
                   </dd>
-                  <dd className="text-sm text-gray-500">
+                  <dd className="text-sm text-slate-500">
                     {stats.sales.monthly.count} orders
                   </dd>
                 </dl>
@@ -130,7 +141,7 @@ const Dashboard = () => {
         </div>
 
         {/* Total Products */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -151,10 +162,10 @@ const Dashboard = () => {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-slate-500 truncate">
                     Total Products
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
+                  <dd className="text-2xl font-semibold text-slate-900">
                     {stats.products.total}
                   </dd>
                   <dd className="text-sm text-red-500">
@@ -167,7 +178,7 @@ const Dashboard = () => {
         </div>
 
         {/* Total Orders */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -188,11 +199,14 @@ const Dashboard = () => {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Orders
+                  <dt className="text-sm font-medium text-slate-500 truncate">
+                    Total Orders (All Time)
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
+                  <dd className="text-2xl font-semibold text-slate-900">
                     {stats.orders.total}
+                  </dd>
+                  <dd className="text-sm text-indigo-500">
+                    Avg order: {presenter.money(presenter.averageOrderValue)}
                   </dd>
                 </dl>
               </div>
@@ -201,12 +215,30 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Exam-friendly insight facts */}
+      <div className="bg-slate-900 rounded-2xl p-6 text-slate-100 shadow-xl">
+        <h3 className="text-lg font-semibold">Business Insights & Facts</h3>
+        <p className="text-sm text-slate-300 mt-1">
+          Auto-calculated indicators to support data-driven decisions.
+        </p>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          {presenter.facts.map((fact, idx) => (
+            <div
+              key={idx}
+              className="rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-3 text-sm"
+            >
+              {fact}
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Top Products and Low Stock Alerts Grid */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Top Products */}
-        <div className="bg-white shadow rounded-lg">
+        <div className="bg-white shadow-lg rounded-xl border border-slate-200/70">
           <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
+            <h3 className="text-lg leading-6 font-semibold text-slate-900">
               Top Selling Products
             </h3>
           </div>
@@ -226,15 +258,15 @@ const Dashboard = () => {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-slate-900 truncate">
                               {product.product.name}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-slate-500">
                               Sold: {product.totalSold} units
                             </p>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            ${product.totalRevenue.toFixed(2)}
+                          <div className="text-sm font-medium text-emerald-600">
+                            {presenter.money(product.totalRevenue)}
                           </div>
                         </div>
                       </li>
@@ -242,16 +274,16 @@ const Dashboard = () => {
                   </ul>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No products sold yet.</p>
+                <p className="text-sm text-slate-500">No products sold yet.</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Low Stock Alerts */}
-        <div className="bg-white shadow rounded-lg">
+        <div className="bg-white shadow-lg rounded-xl border border-slate-200/70">
           <div className="px-4 py-5 sm:px-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
+            <h3 className="text-lg leading-6 font-semibold text-slate-900">
               Low Stock Alerts
             </h3>
           </div>
@@ -265,13 +297,13 @@ const Dashboard = () => {
                         <div className="flex items-center space-x-4">
                           <div className="flex-shrink-0">
                             <img
-                              src={product.images[0]}
+                              src={getImageUrl(product.images?.[0])}
                               alt={product.name}
                               className="h-12 w-12 rounded-md object-cover"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-slate-900 truncate">
                               {product.name}
                             </p>
                           </div>
@@ -284,7 +316,7 @@ const Dashboard = () => {
                   </ul>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No low stock alerts.</p>
+                <p className="text-sm text-slate-500">No low stock alerts.</p>
               )}
             </div>
           </div>

@@ -1,22 +1,21 @@
 const Order = require("../../models/Order");
 const Product = require("../../models/Product");
 const User = require("../../models/User");
+const TimezoneService = require("../../services/TimezoneService");
 
 // Get dashboard statistics
 exports.getDashboardStats = async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const thirtyDaysAgo = new Date(today);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const { startUtc: todayStart, endUtc: todayEnd } =
+      TimezoneService.getYangonDayRange(new Date());
+    const thirtyDaysAgo = TimezoneService.getPastDaysStart(30, new Date());
 
     // Get total sales for today and last 30 days
     const [todaySales, monthlySales] = await Promise.all([
       Order.aggregate([
         {
           $match: {
-            createdAt: { $gte: today },
+            createdAt: { $gte: todayStart, $lt: todayEnd },
             orderStatus: "completed",
           },
         },
@@ -103,9 +102,11 @@ exports.getDashboardStats = async (req, res) => {
       {
         $group: {
           _id: {
-            year: { $year: "$createdAt" },
-            month: { $month: "$createdAt" },
-            day: { $dayOfMonth: "$createdAt" },
+            year: { $year: { date: "$createdAt", timezone: "Asia/Yangon" } },
+            month: { $month: { date: "$createdAt", timezone: "Asia/Yangon" } },
+            day: {
+              $dayOfMonth: { date: "$createdAt", timezone: "Asia/Yangon" },
+            },
           },
           count: { $sum: 1 },
         },
@@ -125,6 +126,7 @@ exports.getDashboardStats = async (req, res) => {
     const totalOrders = await Order.countDocuments();
 
     res.json({
+      timezone: "Asia/Yangon",
       sales: {
         today: todaySales[0] || { total: 0, count: 0 },
         monthly: monthlySales[0] || { total: 0, count: 0 },
@@ -152,6 +154,7 @@ exports.getReports = async (req, res) => {
     const { type, startDate, endDate } = req.query;
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const timezone = "Asia/Yangon";
 
     let report;
     switch (type) {
@@ -166,9 +169,9 @@ exports.getReports = async (req, res) => {
           {
             $group: {
               _id: {
-                year: { $year: "$createdAt" },
-                month: { $month: "$createdAt" },
-                day: { $dayOfMonth: "$createdAt" },
+                year: { $year: { date: "$createdAt", timezone } },
+                month: { $month: { date: "$createdAt", timezone } },
+                day: { $dayOfMonth: { date: "$createdAt", timezone } },
               },
               total: { $sum: "$totalAmount" },
               count: { $sum: 1 },

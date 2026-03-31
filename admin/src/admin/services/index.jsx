@@ -48,7 +48,11 @@ api.interceptors.response.use(
       data: error.response?.data,
       message: error.message,
     });
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || "";
+    const isAuthRequest =
+      requestUrl.includes("/auth/login") || requestUrl.includes("/auth/refresh-token");
+
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       // Dispatch custom event to notify AuthContext

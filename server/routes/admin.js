@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protect, restrictTo } = require("../middleware/auth");
-const authController = require("../controllers/authController");
+const authController = require("../controllers/admin/authController");
 const userController = require("../controllers/admin/userController");
 const productController = require("../controllers/admin/productController");
 const orderController = require("../controllers/admin/orderController");
