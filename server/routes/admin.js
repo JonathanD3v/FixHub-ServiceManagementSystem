@@ -16,6 +16,7 @@ const fs = require("fs");
 
 // Auth routes (public)
 router.post("/auth/login", authController.login);
+
 router.post("/auth/logout", authController.logout);
 router.post("/auth/refresh-token", authController.refreshToken);
 

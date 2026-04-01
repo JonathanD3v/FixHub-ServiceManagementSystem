@@ -24,24 +24,18 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user and check if admin
     const user = await User.findOne({ email });
-    // console.log("user_role", user.role)
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Generate tokens
     const { accessToken } = generateTokens(user);
 
-    // Store refresh token in user document
-    // user.refreshToken = refreshToken;
     await user.save();
 
     res.json({
@@ -51,7 +45,7 @@ exports.login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: "admin", // Temporarily force admin role
+        role: user.role,
       },
     });
   } catch (error) {
