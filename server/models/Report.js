@@ -5,14 +5,15 @@ const reportSchema = new mongoose.Schema({
   reportType: {
     type: String,
     enum: [
+      "sales",
+      "products",
+      "customers",
+      "services",
       "daily_sales",
       "weekly_sales",
       "monthly_sales",
       "technician_performance",
       "service_popularity",
-      "product_sales",
-      "inventory_status",
-      "payment_collection",
     ],
     required: true,
   },
@@ -30,6 +31,9 @@ const reportSchema = new mongoose.Schema({
   // Summary Data
   summary: {
     totalRevenue: Number,
+    deliveredOrders: Number,
+    averageOrderValue: Number,
+    uniqueCustomers: Number,
     totalRepairRevenue: Number,
     totalProductRevenue: Number,
     totalJobs: Number,
@@ -37,7 +41,6 @@ const reportSchema = new mongoose.Schema({
     completedJobs: Number,
     pendingJobs: Number,
     averageJobValue: Number,
-    averageOrderValue: Number,
     totalPartsCost: Number,
     totalProfit: Number,
     profitMargin: Number,

@@ -6,8 +6,9 @@ const userController = require("../controllers/admin/userController");
 const productController = require("../controllers/admin/productController");
 const orderController = require("../controllers/admin/orderController");
 const customerController = require("../controllers/admin/customerController");
-const inventoryController = require("../controllers/admin/inventoryController");
+const supplierController = require("../controllers/admin/supplierController");
 const dashboardController = require("../controllers/admin/dashboardController");
+const reportController = require("../controllers/admin/reportController");
 const roleDashboardController = require("../controllers/admin/roleDashboardController");
 const serviceRequestController = require("../controllers/admin/serviceRequestController");
 const serviceController = require("../controllers/admin/serviceController");
@@ -129,23 +130,20 @@ router.get("/customers/:id", customerController.getCustomer);
 router.put("/customers/:id", customerController.updateCustomer);
 router.get("/customers/:id/orders", customerController.getCustomerOrders);
 
-// Inventory & Supplier routes
-router.get("/inventory", inventoryController.getInventory);
-router.put("/inventory/:id", inventoryController.updateStock);
-router.post("/inventory/adjust", inventoryController.adjustStock);
-router.get("/inventory/history/:id", inventoryController.getStockHistory);
+// Supplier routes
 router
   .route("/suppliers")
-  .get(inventoryController.getSuppliers)
-  .post(inventoryController.createSupplier);
+  .get(supplierController.getSuppliers)
+  .post(supplierController.createSupplier);
 router
   .route("/suppliers/:id")
-  .put(inventoryController.updateSupplier)
-  .delete(inventoryController.deleteSupplier);
+  .put(supplierController.updateSupplier)
+  .delete(supplierController.deleteSupplier);
 
 // Dashboard & Reports routes
 router.get("/dashboard/stats", dashboardController.getDashboardStats);
 router.get("/dashboard/reports", dashboardController.getReports);
+router.get("/reports/data", reportController.getReportData);
 
 // Role-based dashboard routes
 router.get(

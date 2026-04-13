@@ -19,6 +19,8 @@ import Services from "./admin/pages/Services.jsx";
 import Orders from "./admin/pages/Orders.jsx";
 import CustomerPage from "./admin/pages/Customer.jsx";
 import ServiceRequests from "./admin/pages/ServiceRequests.jsx";
+import Suppliers from "./admin/pages/Suppliers.jsx";
+import Reports from "./admin/pages/Reports.jsx";
 
 const ADMIN_ACCESS_ROLES = ["admin", "staff", "technician"];
 
@@ -100,6 +102,8 @@ function App() {
             <Route path="products" element={<Products />} />
             <Route path="services" element={<Services />} />
             <Route path="service-requests" element={<ServiceRequests />} />
+            <Route path="suppliers" element={<Suppliers />} />
+            <Route path="reports" element={<Reports />} />
             <Route path="orders" element={<Orders />} />
             <Route path="customers" element={<CustomerPage />} />
           </Route>

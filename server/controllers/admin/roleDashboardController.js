@@ -22,7 +22,7 @@ exports.getStaffDashboardStats = async (req, res) => {
     // Get assigned orders for this staff member
     const [
       assignedOrders,
-      completedOrders,
+      deliveredOrders,
       pendingOrders,
       totalRevenue,
       recentOrders,
@@ -36,13 +36,13 @@ exports.getStaffDashboardStats = async (req, res) => {
         ...staffOrderScope,
         orderStatus: { $in: ["pending", "processing", "shipped"] },
       }),
-      Order.countDocuments({ ...staffOrderScope, orderStatus: "completed" }),
+      Order.countDocuments({ ...staffOrderScope, orderStatus: "delivered" }),
       Order.countDocuments({
         ...staffOrderScope,
         orderStatus: { $in: ["pending", "processing"] },
       }),
       Order.aggregate([
-        { $match: { ...staffOrderScope, orderStatus: "completed" } },
+        { $match: { ...staffOrderScope, orderStatus: "delivered" } },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
       Order.find(staffOrderScope)
@@ -83,7 +83,7 @@ exports.getStaffDashboardStats = async (req, res) => {
       success: true,
       data: {
         assignedOrders,
-        completedOrders,
+        deliveredOrders,
         pendingOrders,
         totalRevenue: totalRevenue[0]?.total || 0,
         orders: recentOrders,
@@ -96,16 +96,16 @@ exports.getStaffDashboardStats = async (req, res) => {
           {
             label: "Completion Rate (Orders)",
             value:
-              assignedOrders + completedOrders > 0
+              assignedOrders + deliveredOrders > 0
                 ? Math.round(
-                    (completedOrders / (assignedOrders + completedOrders)) *
+                    (deliveredOrders / (assignedOrders + deliveredOrders)) *
                       100,
                   ) + "%"
                 : "0%",
           },
           {
             label: "Total Orders Handled",
-            value: assignedOrders + completedOrders,
+            value: assignedOrders + deliveredOrders,
           },
           {
             label: "Service Requests Assigned",

@@ -32,6 +32,18 @@ const Sidebar = () => {
       roles: ["admin", "staff", "technician"],
     },
     {
+      name: "Suppliers",
+      path: "/admin/suppliers",
+      icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M9 20H4v-2a3 3 0 015.356-1.857M12 12a4 4 0 100-8 4 4 0 000 8zm8 8v-2a4 4 0 00-3-3.87M4 20v-2a4 4 0 013-3.87",
+      roles: ["admin", "staff"],
+    },
+    {
+      name: "Reports",
+      path: "/admin/reports",
+      icon: "M9 17v-6m4 6V7m4 10v-3M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z",
+      roles: ["admin", "staff"],
+    },
+    {
       name: "Orders",
       path: "/admin/orders",
       icon: "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",

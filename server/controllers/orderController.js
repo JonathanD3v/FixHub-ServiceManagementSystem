@@ -307,7 +307,6 @@ exports.updateOrderStatus = async (req, res) => {
       "shipped",
       "delivered",
       "cancelled",
-      "completed",
       "refunded",
     ];
 
@@ -327,7 +326,7 @@ exports.updateOrderStatus = async (req, res) => {
 
     order.orderStatus = status;
 
-    if (status === "completed" || status === "delivered") {
+    if (status === "delivered") {
       order.paymentStatus = "paid";
     }
 
@@ -348,7 +347,7 @@ exports.updateOrderStatus = async (req, res) => {
         console.error("Order ready email failed:", err?.message || err);
       });
     }
-    if (["processing", "shipped", "delivered", "completed", "cancelled"].includes(status)) {
+    if (["processing", "shipped", "delivered", "cancelled"].includes(status)) {
       sendOrderStatusUpdatedNotification(order).catch((err) => {
         console.error("Order status email failed:", err?.message || err);
       });

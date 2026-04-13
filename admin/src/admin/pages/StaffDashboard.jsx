@@ -22,7 +22,7 @@ const StaffDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
     assignedOrders: 0,
-    completedOrders: 0,
+    deliveredOrders: 0,
     pendingOrders: 0,
     totalRevenue: 0,
     orders: [],
@@ -64,7 +64,7 @@ const StaffDashboard = () => {
     const payload = response?.data || response || {};
     return {
       assignedOrders: payload.assignedOrders || 0,
-      completedOrders: payload.completedOrders || 0,
+      deliveredOrders: payload.deliveredOrders || payload.completedOrders || 0,
       pendingOrders: payload.pendingOrders || 0,
       totalRevenue: payload.totalRevenue || 0,
       orders: payload.orders || [],
@@ -90,8 +90,8 @@ const StaffDashboard = () => {
     setPendingRequests(getPendingList(response));
   };
 
-  const completedOrdersCount = stats.orders.filter(
-    (order) => order.orderStatus === "completed",
+  const deliveredOrdersCount = stats.orders.filter(
+    (order) => order.orderStatus === "delivered",
   ).length;
   const pendingOrdersCount = stats.orders.filter((order) =>
     ["pending", "processing", "shipped"].includes(order.orderStatus),
@@ -283,7 +283,7 @@ const StaffDashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Completed Orders */}
+        {/* Delivered Orders */}
         <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
           <div className="p-5">
             <div className="flex items-center">
@@ -306,10 +306,10 @@ const StaffDashboard = () => {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-slate-500 truncate">
-                    Completed Orders
+                    Delivered Orders
                   </dt>
                   <dd className="text-2xl font-semibold text-slate-900">
-                    {stats.completedOrders}
+                    {stats.deliveredOrders}
                   </dd>
                 </dl>
               </div>
@@ -439,7 +439,7 @@ const StaffDashboard = () => {
                 <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
                   <p className="text-xs text-green-700">Completed</p>
                   <p className="text-xl font-semibold text-green-800">
-                    {completedOrdersCount}
+                    {deliveredOrdersCount}
                   </p>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -548,7 +548,7 @@ const StaffDashboard = () => {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
                               className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                order.orderStatus === "completed"
+                                order.orderStatus === "delivered"
                                   ? "bg-green-100 text-green-800"
                                   : order.orderStatus === "pending"
                                     ? "bg-yellow-100 text-yellow-800"

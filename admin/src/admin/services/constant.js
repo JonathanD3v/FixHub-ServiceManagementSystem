@@ -39,11 +39,7 @@ export const CUSTOMER_DETAIL_API = (id) =>
 export const CUSTOMER_ORDERS_API = (id) =>
   `${domain}/api/admin/customers/${id}/orders`;
 
-// Inventory Management APIs
-export const INVENTORY_API = `${domain}/api/admin/inventory`;
-export const INVENTORY_ITEM_API = (id) => `${domain}/api/admin/inventory/${id}`;
-export const INVENTORY_ADJUST_API = `${domain}/api/admin/inventory/adjust`;
-export const INVENTORY_HISTORY_API = `${domain}/api/admin/inventory/history`;
+// Supplier APIs
 export const SUPPLIERS_API = `${domain}/api/admin/suppliers`;
 export const SUPPLIER_DETAIL_API = (id) =>
   `${domain}/api/admin/suppliers/${id}`;
@@ -51,6 +47,7 @@ export const SUPPLIER_DETAIL_API = (id) =>
 // Dashboard & Reports APIs
 export const DASHBOARD_STATS_API = `${domain}/api/admin/dashboard/stats`;
 export const DASHBOARD_REPORTS_API = `${domain}/api/admin/dashboard/reports`;
+export const REPORTS_DATA_API = `${domain}/api/admin/reports/data`;
 
 // Settings APIs
 // export const SETTINGS_API = `${domain}/api/admin/settings`;

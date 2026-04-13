@@ -16,7 +16,7 @@ exports.getDashboardStats = async (req, res) => {
         {
           $match: {
             createdAt: { $gte: todayStart, $lt: todayEnd },
-            orderStatus: "completed",
+            orderStatus: "delivered",
           },
         },
         {
@@ -31,7 +31,7 @@ exports.getDashboardStats = async (req, res) => {
         {
           $match: {
             createdAt: { $gte: thirtyDaysAgo },
-            orderStatus: "completed",
+            orderStatus: "delivered",
           },
         },
         {
@@ -52,7 +52,7 @@ exports.getDashboardStats = async (req, res) => {
       {
         $match: {
           createdAt: { $gte: thirtyDaysAgo },
-          orderStatus: "completed",
+          orderStatus: "delivered",
         },
       },
       { $unwind: "$items" },
@@ -163,7 +163,7 @@ exports.getReports = async (req, res) => {
           {
             $match: {
               createdAt: { $gte: start, $lte: end },
-              orderStatus: "completed",
+              orderStatus: "delivered",
             },
           },
           {
@@ -186,7 +186,7 @@ exports.getReports = async (req, res) => {
           {
             $match: {
               createdAt: { $gte: start, $lte: end },
-              orderStatus: "completed",
+              orderStatus: "delivered",
             },
           },
           { $unwind: "$items" },
@@ -217,7 +217,7 @@ exports.getReports = async (req, res) => {
           {
             $match: {
               createdAt: { $gte: start, $lte: end },
-              orderStatus: "completed",
+              orderStatus: "delivered",
             },
           },
           {

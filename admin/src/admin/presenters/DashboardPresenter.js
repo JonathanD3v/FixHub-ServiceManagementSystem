@@ -32,7 +32,7 @@ class DashboardPresenter {
     return [
       `Average order value this month: ${this.money(this.averageOrderValue)}`,
       `${Number(this.stats?.products?.lowStock || 0)} products need restocking soon`,
-      `${Number(this.stats?.sales?.monthly?.count || 0)} completed orders in the last 30 days`,
+      `${Number(this.stats?.sales?.monthly?.count || 0)} delivered orders in the last 30 days`,
       `Inventory risk level: ${this.inventoryRiskPercent.toFixed(1)}%`,
     ];
   }

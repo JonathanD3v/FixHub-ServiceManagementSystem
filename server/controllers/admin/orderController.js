@@ -49,7 +49,7 @@ exports.getAllOrders = catchAsync(async (req, res) => {
 
   const updatedOrders = await Promise.all(
     orders.map(async (order) => {
-      if (order.orderStatus === "completed" && order.paymentStatus !== "paid") {
+      if (order.orderStatus === "delivered" && order.paymentStatus !== "paid") {
         order.paymentStatus = "paid";
         await order.save();
       } else if (
@@ -104,7 +104,6 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
     "ready",
     "shipped",
     "delivered",
-    "completed",
     "cancelled",
     "refunded",
   ];
@@ -118,7 +117,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
   }
 
   let paymentStatus = order.paymentStatus;
-  if (status === "completed" || status === "delivered") {
+  if (status === "delivered") {
     paymentStatus = "paid";
   } else if (status === "cancelled" || status === "refunded") {
     paymentStatus = "refunded";
@@ -140,7 +139,7 @@ exports.updateOrderStatus = catchAsync(async (req, res) => {
       console.error("Order ready email failed:", err?.message || err);
     });
   }
-  if (["processing", "shipped", "delivered", "completed", "cancelled"].includes(status)) {
+  if (["processing", "shipped", "delivered", "cancelled"].includes(status)) {
     sendOrderStatusUpdatedNotification(order).catch((err) => {
       console.error("Order status email failed:", err?.message || err);
     });
