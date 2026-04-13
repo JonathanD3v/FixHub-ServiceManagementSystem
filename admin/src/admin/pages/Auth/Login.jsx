@@ -37,10 +37,13 @@ const Login = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-bold text-white">
-          Admin Dashboard
+          Dashboard Login
         </h2>
         <p className="mt-2 text-center text-sm text-indigo-100/80">
-          Sign in to manage products, services, and orders
+          Admin, Staff, and Technician Portal
+        </p>
+        <p className="mt-3 text-center text-xs text-indigo-200/70">
+          Access your role-specific dashboard to manage operations
         </p>
       </div>
 

@@ -47,8 +47,6 @@ const serviceRequestSchema = new mongoose.Schema({
   technicianNotes: String,
   internalNotes: String,
 
-  // Images
-  images: [String],
 
   // Service Info
   serviceId: {
@@ -134,8 +132,10 @@ const serviceRequestSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ["cash", "card", "bank"],
-    default: null,
+    enum: {
+      values: ["cash", "card", "bank"],
+      message: "Payment method must be one of: cash, card, bank",
+    },
   },
   paymentDate: Date,
   paidAmount: {

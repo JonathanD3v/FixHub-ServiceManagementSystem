@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const path = require("path");
 require("dotenv").config();
+
 process.env.TZ = process.env.APP_TIMEZONE || "Asia/Yangon";
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");

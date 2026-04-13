@@ -12,35 +12,59 @@ import { AuthProvider, useAuth } from "./admin/context/AuthContext.jsx";
 import AdminLayout from "./admin/components/layout/AdminLayout.jsx";
 import Login from "./admin/pages/Auth/Login.jsx";
 import Dashboard from "./admin/pages/Dashboard.jsx";
+import StaffDashboard from "./admin/pages/StaffDashboard.jsx";
+import TechnicianDashboard from "./admin/pages/TechnicianDashboard.jsx";
 import Products from "./admin/pages/Products.jsx";
 import Services from "./admin/pages/Services.jsx";
 import Orders from "./admin/pages/Orders.jsx";
 import CustomerPage from "./admin/pages/Customer.jsx";
+import ServiceRequests from "./admin/pages/ServiceRequests.jsx";
+
+const ADMIN_ACCESS_ROLES = ["admin", "staff", "technician"];
+
+// Role-based Dashboard Router
+const RoleBasedDashboard = () => {
+  const { user } = useAuth();
+
+  if (user?.role === "staff") {
+    return <StaffDashboard />;
+  } else if (user?.role === "technician") {
+    return <TechnicianDashboard />;
+  } else {
+    return <Dashboard />; // Admin dashboard
+  }
+};
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  if (!user) {
-    return <Navigate to="/admin/login" />;
+  if (!user || !ADMIN_ACCESS_ROLES.includes(user.role)) {
+    logout();
+    return <Navigate to="/admin/login" replace />;
   }
 
   return children;
 };
 
 const PublicLoginRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   if (loading) {
     return <div>Loading...</div>;
   }
 
-  if (user) {
+  if (user && ADMIN_ACCESS_ROLES.includes(user.role)) {
     return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (user && !ADMIN_ACCESS_ROLES.includes(user.role)) {
+    logout();
+    return <Navigate to="/admin/login" replace />;
   }
 
   return children;
@@ -72,9 +96,10 @@ function App() {
             }
           >
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard" element={<RoleBasedDashboard />} />
             <Route path="products" element={<Products />} />
             <Route path="services" element={<Services />} />
+            <Route path="service-requests" element={<ServiceRequests />} />
             <Route path="orders" element={<Orders />} />
             <Route path="customers" element={<CustomerPage />} />
           </Route>

@@ -8,6 +8,8 @@ const orderController = require("../controllers/admin/orderController");
 const customerController = require("../controllers/admin/customerController");
 const inventoryController = require("../controllers/admin/inventoryController");
 const dashboardController = require("../controllers/admin/dashboardController");
+const roleDashboardController = require("../controllers/admin/roleDashboardController");
+const serviceRequestController = require("../controllers/admin/serviceRequestController");
 const serviceController = require("../controllers/admin/serviceController");
 const mediaController = require("../controllers/admin/mediaController");
 const multer = require("multer");
@@ -144,6 +146,58 @@ router
 // Dashboard & Reports routes
 router.get("/dashboard/stats", dashboardController.getDashboardStats);
 router.get("/dashboard/reports", dashboardController.getReports);
+
+// Role-based dashboard routes
+router.get(
+  "/staff/dashboard",
+  restrictTo("staff", "admin"),
+  roleDashboardController.getStaffDashboardStats,
+);
+router.get(
+  "/staff/pending-requests",
+  restrictTo("staff", "admin"),
+  serviceRequestController.getPendingServiceRequests,
+);
+router.post(
+  "/staff/assign-request",
+  restrictTo("staff", "admin"),
+  serviceRequestController.assignServiceRequest,
+);
+router.post(
+  "/staff/create-request",
+  restrictTo("staff", "admin"),
+  serviceRequestController.createServiceRequest,
+);
+router.get(
+  "/service-requests",
+  restrictTo("staff", "admin", "technician"),
+  serviceRequestController.getAllServiceRequests,
+);
+router.get(
+  "/service-requests/:id",
+  restrictTo("staff", "admin", "technician"),
+  serviceRequestController.getServiceRequest,
+);
+router.post(
+  "/service-requests",
+  restrictTo("staff", "admin"),
+  serviceRequestController.createServiceRequest,
+);
+router.put(
+  "/service-requests/:id",
+  restrictTo("staff", "admin"),
+  serviceRequestController.updateServiceRequest,
+);
+router.delete(
+  "/service-requests/:id",
+  restrictTo("staff", "admin"),
+  serviceRequestController.deleteServiceRequest,
+);
+router.get(
+  "/technician/dashboard",
+  restrictTo("technician", "admin"),
+  roleDashboardController.getTechnicianDashboardStats,
+);
 
 // Service management routes
 router.get("/services", serviceController.getAllServices);

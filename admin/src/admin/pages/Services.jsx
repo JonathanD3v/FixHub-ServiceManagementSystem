@@ -16,7 +16,6 @@ const Services = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Form data matching backend schema
   const [formData, setFormData] = useState({
     name: "",
     category: "",
@@ -257,29 +256,46 @@ const Services = () => {
       <ToastContainer />
 
       {/* Header */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow">
-        <h1 className="text-2xl font-bold text-gray-900">Services</h1>
+      <div className="rounded-2xl bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 p-5 sm:p-6 text-white shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <p className="text-sm text-indigo-100">Catalog Management</p>
+            <h1 className="text-2xl sm:text-3xl font-semibold">Services</h1>
+            <p className="text-sm text-indigo-100/90 mt-1">
+              Manage repair services with premium presentation.
+            </p>
+          </div>
+          <div className="bg-white/15 rounded-xl px-4 py-2">
+            <p className="text-xs text-indigo-100 uppercase tracking-wide">
+              Total Services
+            </p>
+            <p className="text-2xl font-semibold">{services.length}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end">
         <button
           onClick={() => {
             resetForm();
             setIsModalOpen(true);
           }}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+          className="inline-flex items-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-cyan-600 hover:shadow-lg transition"
         >
           Add Service
         </button>
       </div>
 
       {/* Services Grid View */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
         {Array.isArray(services) && services.length > 0 ? (
           services.map((service) => (
             <div
               key={service._id}
-              className="bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-xl"
+              className="bg-white/95 backdrop-blur-sm rounded-2xl border border-slate-200/70 shadow-lg overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
             >
               {/* Service Image */}
-              <div className="relative h-48 bg-gradient-to-br from-blue-100 to-blue-200">
+              <div className="relative h-48 bg-gradient-to-br from-indigo-100 via-blue-100 to-cyan-100">
                 {service.image ? (
                   <img
                     src={getImageUrl(service.image)}
@@ -312,7 +328,7 @@ const Services = () => {
                 {/* Status Badge */}
                 <div className="absolute top-2 right-2">
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur ${
                       service.isActive
                         ? "bg-green-100 text-green-800"
                         : "bg-red-100 text-red-800"
@@ -324,7 +340,7 @@ const Services = () => {
                 {/* Popular Badge */}
                 {service.popular && (
                   <div className="absolute top-2 left-2">
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-500 text-white">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500 text-white">
                       Popular
                     </span>
                   </div>
@@ -353,20 +369,20 @@ const Services = () => {
                 </div>
 
                 {/* Category */}
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700">
                     {service.category}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-500 whitespace-nowrap">
                     Cost: ${service.cost || 0}
                   </span>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-4 flex justify-end space-x-2">
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     onClick={() => handleToggleStatus(service._id)}
-                    className={`inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md ${
+                    className={`inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg ${
                       service.isActive
                         ? "text-red-700 bg-red-100 hover:bg-red-200"
                         : "text-green-700 bg-green-100 hover:bg-green-200"
@@ -376,7 +392,7 @@ const Services = () => {
                   </button>
                   <button
                     onClick={() => handleEdit(service)}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+                    className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
                   >
                     <svg
                       className="w-4 h-4 mr-1"
@@ -395,7 +411,7 @@ const Services = () => {
                   </button>
                   <button
                     onClick={() => handleDelete(service._id)}
-                    className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                    className="inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
                   >
                     <svg
                       className="w-4 h-4 mr-1"
@@ -471,10 +487,10 @@ const Services = () => {
 
       {/* Service Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
+              <h2 className="text-2xl font-semibold text-gray-900">
                 {selectedService ? "Edit Service" : "Add New Service"}
               </h2>
               <button
@@ -670,7 +686,7 @@ const Services = () => {
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-cyan-600 text-white rounded-lg hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {uploading
                     ? "Saving..."

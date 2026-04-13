@@ -20,6 +20,8 @@ const generateTokens = (user) => {
   return { accessToken };
 };
 
+const ADMIN_ACCESS_ROLES = ["admin", "staff", "technician"];
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -34,13 +36,16 @@ exports.login = async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const { accessToken } = generateTokens(user);
+    if (!ADMIN_ACCESS_ROLES.includes(user.role)) {
+      return res
+        .status(403)
+        .json({ error: "Access denied. Admin credentials required." });
+    }
 
-    await user.save();
+    const { accessToken } = generateTokens(user);
 
     res.json({
       accessToken,
-      // refreshToken,
       user: {
         id: user._id,
         name: user.name,

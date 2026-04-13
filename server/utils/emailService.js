@@ -1,33 +1,72 @@
 const nodemailer = require("nodemailer");
 
-const APP_NAME = process.env.SHOP_NAME || "POS System";
+const APP_NAME = process.env.SHOP_NAME || "FixHub";
 const APP_BASE_URL = process.env.APP_BASE_URL || "http://localhost:5173";
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || process.env.EMAIL_FROM;
 
 const isEmailConfigured = () =>
   Boolean(
     process.env.EMAIL_HOST &&
-      process.env.EMAIL_PORT &&
-      process.env.EMAIL_USER &&
-      process.env.EMAIL_PASS &&
-      process.env.EMAIL_FROM,
+    process.env.EMAIL_PORT &&
+    process.env.EMAIL_USER &&
+    process.env.EMAIL_PASS &&
+    process.env.EMAIL_FROM,
   );
 
 let transporter = null;
+let lastTransporterCreation = 0;
+
 const getTransporter = () => {
   if (!isEmailConfigured()) {
     return null;
   }
 
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
+  const useSSL =
+    process.env.EMAIL_USE_SSL === "true" ||
+    Number(process.env.EMAIL_PORT) === 465;
+
+  transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT),
+    secure: useSSL, // true for 465, false for 587
+    requireTLS: !useSSL, // for port 587
+    family: 4, // Force IPv4 only
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+    // Connection and timeout settings
+    connectionTimeout: 15000, // 15 seconds for initial connection
+    greetingTimeout: 10000, // 10 seconds for SMTP greeting
+    socketTimeout: 15000, // 15 seconds for socket operations
+    maxConnections: 1, // Single connection
+    maxMessages: 100, // Messages per connection
+    rateDelta: 1000, // Rate limiting window
+    rateLimit: 10, // Max messages per window
+    // Custom DNS lookup to force IPv4
+    lookup: (hostname, options, callback) => {
+      dns.resolve4(hostname, (err, addresses) => {
+        if (err) {
+          console.error(
+            `[Email DNS] Failed to resolve ${hostname}:`,
+            err.message,
+          );
+          callback(err);
+        } else {
+          callback(null, addresses[0], 4);
+        }
+      });
+    },
+  });
+
+  lastTransporterCreation = Date.now();
+
+  if (process.env.DEBUG_EMAIL === "true") {
+    console.log("[DEBUG] Email transporter created with:", {
       host: process.env.EMAIL_HOST,
-      port: Number(process.env.EMAIL_PORT),
-      secure: Number(process.env.EMAIL_PORT) === 465,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+      port: process.env.EMAIL_PORT,
+      secure: useSSL,
+      family: 4,
     });
   }
 
@@ -189,17 +228,89 @@ const emailTemplates = {
   }),
 };
 
-// Send email function
+// Retry logic with exponential backoff
+const sendEmailWithRetry = async (
+  to,
+  type,
+  data,
+  retries = 2,
+  delay = 2500,
+) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      // Reset transporter for retries to get fresh connection
+      if (attempt > 0) {
+        console.log(
+          `[Email Retry] Attempt ${attempt + 1}/${retries + 1} for ${type} to ${to}`,
+        );
+        transporter = null;
+        await new Promise((resolve) =>
+          setTimeout(resolve, delay * Math.pow(2, attempt - 1)),
+        );
+      }
+
+      const transport = getTransporter();
+      if (!transport) {
+        return {
+          success: false,
+          skipped: true,
+          reason: "EMAIL_NOT_CONFIGURED",
+          attempt: attempt + 1,
+        };
+      }
+
+      const template = emailTemplates[type](data);
+      const mailOptions = {
+        from: `"${APP_NAME}" <${process.env.EMAIL_FROM}>`,
+        to: to,
+        subject: template.subject,
+        html: template.html,
+      };
+
+      const info = await transport.sendMail(mailOptions);
+      console.log(`[Email Success] ${type} sent to ${to} (${info.messageId})`);
+      return {
+        success: true,
+        messageId: info.messageId,
+        attempt: attempt + 1,
+      };
+    } catch (error) {
+      const isLastAttempt = attempt === retries;
+      const isRetryableError = [
+        "ETIMEDOUT",
+        "ECONNRESET",
+        "ENOTFOUND",
+        "ECONNREFUSED",
+        "EHOSTUNREACH",
+        "ESOCKET", // IPv6/socket connection errors
+      ].includes(error.code);
+
+      if (isLastAttempt || !isRetryableError) {
+        console.error(
+          `[Email Failed] ${type} to ${to} after ${attempt + 1} attempt(s):`,
+          {
+            message: error.message,
+            code: error.code,
+            command: error.command,
+          },
+        );
+        transporter = null; // Reset for next operation
+        return {
+          success: false,
+          error: error.message,
+          code: error.code,
+          type: type,
+          recipient: to,
+          attempts: attempt + 1,
+        };
+      }
+    }
+  }
+};
+
+// Send email function (main entry point)
 const sendEmail = async (to, type, data) => {
   try {
-    const transport = getTransporter();
-    if (!transport) {
-      console.warn(
-        `[Email disabled] Missing SMTP env, skipped "${type}" email to ${to}`,
-      );
-      return { success: false, skipped: true, reason: "EMAIL_NOT_CONFIGURED" };
-    }
-
     if (!to) {
       return { success: false, skipped: true, reason: "MISSING_RECIPIENT" };
     }
@@ -208,21 +319,18 @@ const sendEmail = async (to, type, data) => {
       return { success: false, skipped: true, reason: "UNKNOWN_TEMPLATE" };
     }
 
-    const template = emailTemplates[type](data);
-
-    const mailOptions = {
-      from: `"${APP_NAME}" <${process.env.EMAIL_FROM}>`,
-      to: to,
-      subject: template.subject,
-      html: template.html,
-    };
-
-    const info = await transport.sendMail(mailOptions);
-    console.log(`Email sent: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
+    return await sendEmailWithRetry(to, type, data);
   } catch (error) {
-    console.error("Email error:", error);
-    return { success: false, error: error.message };
+    console.error(
+      `[Email Exception] Unexpected error for ${type} to ${to}:`,
+      error.message,
+    );
+    return {
+      success: false,
+      error: error.message,
+      type: type,
+      recipient: to,
+    };
   }
 };
 
@@ -331,6 +439,48 @@ const sendServiceRequestReceivedNotification = async (serviceRequest) => {
   });
 };
 
+// Test email configuration
+const testEmailConfiguration = async () => {
+  try {
+    if (!isEmailConfigured()) {
+      return {
+        success: false,
+        message: "Email not configured - missing environment variables",
+      };
+    }
+
+    const transport = getTransporter();
+    if (!transport) {
+      return { success: false, message: "Failed to create email transporter" };
+    }
+
+    // Send a test email to the admin
+    const result = await sendEmail(process.env.ADMIN_EMAIL, "welcomeUser", {
+      name: "Test User",
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: "Test email sent successfully",
+        messageId: result.messageId,
+      };
+    } else {
+      return {
+        success: false,
+        message: `Test email failed: ${result.error}`,
+        error: result.error,
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: `Test failed with error: ${error.message}`,
+      error: error.message,
+    };
+  }
+};
+
 module.exports = {
   sendEmail,
   sendServiceAssignedNotification,
@@ -343,4 +493,5 @@ module.exports = {
   sendWelcomeUserEmail,
   sendServiceRequestReceivedNotification,
   isEmailConfigured,
+  testEmailConfiguration,
 };

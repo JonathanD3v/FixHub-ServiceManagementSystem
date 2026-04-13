@@ -24,13 +24,23 @@ const Dashboard = () => {
     lowStockProducts: [],
   });
   const [loading, setLoading] = useState(true);
+  const [serviceSummary, setServiceSummary] = useState({
+    pendingServiceRequests: 0,
+    assignedServiceRequests: 0,
+    completedServiceRequests: 0,
+    totalServiceRevenue: 0,
+  });
   const presenter = new DashboardPresenter(stats);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await getMethod("/admin/dashboard/stats");
-        setStats(response);
+        const [dashboardResponse, staffSummaryResponse] = await Promise.all([
+          getMethod("/admin/dashboard/stats"),
+          getMethod("/admin/staff/dashboard"),
+        ]);
+        setStats(dashboardResponse);
+        setServiceSummary(staffSummaryResponse?.data || {});
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
       } finally {
@@ -211,6 +221,42 @@ const Dashboard = () => {
                 </dl>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Service Request Summary */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
+          <div className="p-5">
+            <p className="text-sm font-medium text-slate-500">Pending Service Requests</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">
+              {serviceSummary.pendingServiceRequests || 0}
+            </p>
+          </div>
+        </div>
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
+          <div className="p-5">
+            <p className="text-sm font-medium text-slate-500">Assigned Service Requests</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">
+              {serviceSummary.assignedServiceRequests || 0}
+            </p>
+          </div>
+        </div>
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
+          <div className="p-5">
+            <p className="text-sm font-medium text-slate-500">Completed Service Requests</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">
+              {serviceSummary.completedServiceRequests || 0}
+            </p>
+          </div>
+        </div>
+        <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70">
+          <div className="p-5">
+            <p className="text-sm font-medium text-slate-500">Service Revenue</p>
+            <p className="text-2xl font-semibold text-slate-900 mt-1">
+              {presenter.money(serviceSummary.totalServiceRevenue || 0)}
+            </p>
           </div>
         </div>
       </div>

@@ -50,6 +50,8 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  const adminAccessRoles = ["admin", "staff", "technician"];
+
   const login = async (email, password) => {
     try {
       setError(null);
@@ -59,6 +61,10 @@ export const AuthProvider = ({ children }) => {
 
       if (!token || !loggedInUser) {
         throw new Error("Invalid login response. Please try again.");
+      }
+
+      if (!adminAccessRoles.includes(loggedInUser.role)) {
+        throw new Error("Access denied. Admin credentials required.");
       }
 
       // Store token and user data
