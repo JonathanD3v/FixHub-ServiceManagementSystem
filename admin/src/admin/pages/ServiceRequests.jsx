@@ -10,8 +10,11 @@ import {
 import DashboardPresenter from "../presenters/DashboardPresenter.js";
 import { getMethod } from "../services/index.jsx";
 import toast from "react-hot-toast";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const ServiceRequests = () => {
+  const { user } = useAuth();
+  const isTechnician = user?.role === "technician";
   const [serviceRequests, setServiceRequests] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -35,6 +38,7 @@ const ServiceRequests = () => {
     partsCost: "",
     paymentMethod: "",
     status: "pending",
+    technicianNotes: "",
   });
   const presenter = new DashboardPresenter({});
   const getStatusStyle = (status) => {
@@ -46,10 +50,15 @@ const ServiceRequests = () => {
   };
 
   const loadData = async () => {
+    const requestsPromise = getAllServiceRequests();
+    const usersPromise = getMethod("/admin/users");
+    const pendingPromise = isTechnician
+      ? Promise.resolve({ data: { pendingRequests: [] } })
+      : getPendingServiceRequests();
     const [requestsResponse, usersResponse, pendingResponse] = await Promise.all([
-      getAllServiceRequests(),
-      getMethod("/admin/users"),
-      getPendingServiceRequests(),
+      requestsPromise,
+      usersPromise,
+      pendingPromise,
     ]);
     setServiceRequests(requestsResponse?.data || []);
     setPendingRequests(
@@ -75,12 +84,13 @@ const ServiceRequests = () => {
 
   useEffect(() => {
     if (loading) return;
+    if (isTechnician) return;
     const count = pendingRequests.length;
     if (count > 0 && count !== prevPendingCount.current) {
       toast(`🔔 ${count} pending request${count > 1 ? "s" : ""} to assign`);
     }
     prevPendingCount.current = count;
-  }, [pendingRequests, loading]);
+  }, [pendingRequests, loading, isTechnician]);
 
   const resetForm = () => {
     setEditingId(null);
@@ -97,6 +107,7 @@ const ServiceRequests = () => {
       partsCost: "",
       paymentMethod: "",
       status: "pending",
+      technicianNotes: "",
     });
   };
 
@@ -126,29 +137,40 @@ const ServiceRequests = () => {
           : "",
       paymentMethod: item.paymentMethod || "",
       status: item.status || "pending",
+      technicianNotes: item.technicianNotes || "",
     });
     setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!editingId && isTechnician) {
+      toast.error("Technician cannot create a new request.");
+      return;
+    }
     if (
-      !formData.customerName ||
-      !formData.customerPhone ||
-      !formData.deviceType ||
-      !formData.issueDescription
+      !isTechnician &&
+      (!formData.customerName ||
+        !formData.customerPhone ||
+        !formData.deviceType ||
+        !formData.issueDescription)
     ) {
       toast.error("Please fill required fields.");
       return;
     }
     try {
-      const payload = {
-        ...formData,
-        laborCost:
-          formData.laborCost === "" ? 0 : parseFloat(formData.laborCost) || 0,
-        partsCost:
-          formData.partsCost === "" ? 0 : parseFloat(formData.partsCost) || 0,
-      };
+      const payload = isTechnician
+        ? {
+            status: formData.status,
+            technicianNotes: formData.technicianNotes || "",
+          }
+        : {
+            ...formData,
+            laborCost:
+              formData.laborCost === "" ? 0 : parseFloat(formData.laborCost) || 0,
+            partsCost:
+              formData.partsCost === "" ? 0 : parseFloat(formData.partsCost) || 0,
+          };
       if (editingId) {
         await updateServiceRequest(editingId, payload);
         toast.success("Service request updated successfully.");
@@ -165,6 +187,10 @@ const ServiceRequests = () => {
   };
 
   const handleDelete = async (id) => {
+    if (isTechnician) {
+      toast.error("Technician cannot delete requests.");
+      return;
+    }
     if (!window.confirm("Delete this service request?")) return;
     try {
       await deleteServiceRequest(id);
@@ -253,7 +279,8 @@ const ServiceRequests = () => {
         </div>
       </div>
 
-      <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/70 overflow-hidden">
+      {!isTechnician && (
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">
             Pending Requests to Assign
@@ -303,17 +330,20 @@ const ServiceRequests = () => {
             <p className="text-sm text-slate-500">No pending requests to assign.</p>
           )}
         </div>
-      </div>
+        </div>
+      )}
 
       <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/70 overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4 flex items-center justify-between bg-white">
           <h2 className="text-lg font-semibold text-slate-900">Service Requests</h2>
-          <button
-            onClick={openCreate}
-            className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:shadow-md text-white text-sm font-medium px-4 py-2 rounded-xl transition"
-          >
-            + Add Request
-          </button>
+          {!isTechnician && (
+            <button
+              onClick={openCreate}
+              className="bg-gradient-to-r from-indigo-600 to-cyan-600 hover:shadow-md text-white text-sm font-medium px-4 py-2 rounded-xl transition"
+            >
+              + Add Request
+            </button>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200">
@@ -365,12 +395,14 @@ const ServiceRequests = () => {
                         >
                           Manage
                         </button>
-                        <button
-                          onClick={() => handleDelete(item._id)}
-                          className="px-3 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
-                        >
-                          Delete
-                        </button>
+                        {!isTechnician && (
+                          <button
+                            onClick={() => handleDelete(item._id)}
+                            className="px-3 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -422,7 +454,40 @@ const ServiceRequests = () => {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="p-5 sm:p-7 space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {isTechnician ? (
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                    Work Progress Update
+                  </h4>
+                  <div className="text-sm text-slate-600">
+                    <span className="font-medium text-slate-900">Request:</span>{" "}
+                    {selectedRequest?.requestNumber || editingId}
+                  </div>
+                  <select
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({ ...formData, status: e.target.value })
+                    }
+                  >
+                    <option value="assigned">assigned</option>
+                    <option value="in-progress">in-progress</option>
+                    <option value="waiting-parts">waiting-parts</option>
+                    <option value="completed">completed</option>
+                  </select>
+                  <textarea
+                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    rows="4"
+                    placeholder="Technician notes"
+                    value={formData.technicianNotes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, technicianNotes: e.target.value })
+                    }
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
                   <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
                     Customer
@@ -529,49 +594,55 @@ const ServiceRequests = () => {
                   <option value="cancelled">cancelled</option>
                 </select>
               </div>
-              </div>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Labor Cost
-                  </label>
-                  <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    placeholder="0.00"
-                    value={formData.laborCost}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                        Labor Cost
+                      </label>
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="0.00"
+                        value={formData.laborCost}
+                        onChange={(e) =>
+                          setFormData({ ...formData, laborCost: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                        Parts Cost
+                      </label>
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="0.00"
+                        value={formData.partsCost}
+                        onChange={(e) =>
+                          setFormData({ ...formData, partsCost: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!isTechnician && (
+                <>
+                  <textarea
+                    className="w-full border border-slate-300 rounded-2xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    rows="4"
+                    placeholder="Issue Description *"
+                    value={formData.issueDescription}
                     onChange={(e) =>
-                      setFormData({ ...formData, laborCost: e.target.value })
+                      setFormData({ ...formData, issueDescription: e.target.value })
                     }
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Parts Cost
-                  </label>
-                  <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    placeholder="0.00"
-                    value={formData.partsCost}
-                    onChange={(e) =>
-                      setFormData({ ...formData, partsCost: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-
-              <textarea
-                className="w-full border border-slate-300 rounded-2xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                rows="4"
-                placeholder="Issue Description *"
-                value={formData.issueDescription}
-                onChange={(e) =>
-                  setFormData({ ...formData, issueDescription: e.target.value })
-                }
-              />
-              <p className="text-xs text-slate-500">
-                Tip: Leave technician empty to keep request pending.
-              </p>
+                  <p className="text-xs text-slate-500">
+                    Tip: Leave technician empty to keep request pending.
+                  </p>
+                </>
+              )}
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button
                   type="button"

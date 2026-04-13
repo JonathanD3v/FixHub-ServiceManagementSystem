@@ -185,7 +185,7 @@ router.post(
 );
 router.put(
   "/service-requests/:id",
-  restrictTo("staff", "admin"),
+  restrictTo("staff", "admin", "technician"),
   serviceRequestController.updateServiceRequest,
 );
 router.delete(

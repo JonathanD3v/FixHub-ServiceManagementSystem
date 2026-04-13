@@ -31,7 +31,7 @@ const RoleBasedDashboard = () => {
   } else if (user?.role === "technician") {
     return <TechnicianDashboard />;
   } else {
-    return <Dashboard />; // Admin dashboard
+    return <Dashboard />;
   }
 };
 

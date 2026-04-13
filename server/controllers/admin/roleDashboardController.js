@@ -358,17 +358,17 @@ exports.getTechnicianDashboardStats = async (req, res) => {
       }),
       ServiceRequest.countDocuments({
         assignedTo: technicianId,
-        status: "in_progress",
+        status: "in-progress",
       }),
       ServiceRequest.aggregate([
         { $match: { assignedTo: technicianId, status: "completed" } },
-        { $group: { _id: null, total: { $sum: "$totalCost" } } },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
       ServiceRequest.find({ assignedTo: technicianId })
         .sort({ createdAt: -1 })
         .limit(10)
         .select(
-          "_id customerName deviceModel deviceType status createdAt totalCost",
+          "_id requestNumber customerName deviceModel deviceType status createdAt totalAmount",
         )
         .lean(),
     ]);

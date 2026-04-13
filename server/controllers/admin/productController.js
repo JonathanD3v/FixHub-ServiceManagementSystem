@@ -3,6 +3,22 @@ const Category = require("../../models/Category");
 const AppError = require("../../utils/appError");
 const catchAsync = require("../../utils/catchAsync");
 
+const imagePathMatches = (storedPath, incomingPath) => {
+  if (!storedPath || !incomingPath) return false;
+  return storedPath === incomingPath || storedPath.endsWith(incomingPath) || incomingPath.endsWith(storedPath);
+};
+
+const normalizeRemoveImages = (removeImages) => {
+  if (!removeImages) return [];
+  if (Array.isArray(removeImages)) return removeImages;
+  try {
+    const parsed = JSON.parse(removeImages);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
 // Get all products with pagination and filtering
 exports.getAllProducts = catchAsync(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
@@ -74,6 +90,7 @@ exports.createProduct = catchAsync(async (req, res) => {
   const productData = {
     ...req.body,
     images,
+    mainImage: req.body.mainImage || images[0] || "",
   };
 
   const product = await Product.create(productData);
@@ -91,12 +108,21 @@ exports.updateProduct = catchAsync(async (req, res) => {
     throw new AppError("Product not found", 404);
   }
 
-  // Handle image paths
+  // Handle image paths and replacement/removal logic
   let images = existingProduct.images || [];
+  const removedImages = normalizeRemoveImages(req.body.removeImages);
+
+  // Remove selected existing images
+  if (removedImages.length > 0) {
+    images = images.filter(
+      (img) => !removedImages.some((toRemove) => imagePathMatches(img, toRemove)),
+    );
+  }
 
   // Add new uploaded images
+  let newImages = [];
   if (req.files && req.files.length > 0) {
-    const newImages = req.files.map((file) => `/uploads/${file.filename}`);
+    newImages = req.files.map((file) => `/uploads/${file.filename}`);
     images = [...images, ...newImages];
   }
 
@@ -108,9 +134,25 @@ exports.updateProduct = catchAsync(async (req, res) => {
     images = imageArray;
   }
 
+  // Resolve main image:
+  // - keep incoming mainImage if provided
+  // - fallback to first new image for update with new upload
+  // - otherwise preserve existing mainImage if still present
+  let mainImage = req.body.mainImage || existingProduct.mainImage || "";
+  if (removedImages.some((toRemove) => imagePathMatches(mainImage, toRemove))) {
+    mainImage = "";
+  }
+  if (!req.body.mainImage && newImages.length > 0) {
+    mainImage = newImages[0];
+  }
+  if (mainImage && !images.some((img) => imagePathMatches(img, mainImage))) {
+    mainImage = images[0] || "";
+  }
+
   const productData = {
     ...req.body,
     images,
+    mainImage,
   };
 
   const product = await Product.findByIdAndUpdate(req.params.id, productData, {

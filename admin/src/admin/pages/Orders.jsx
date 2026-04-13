@@ -33,7 +33,6 @@ const Orders = () => {
     "processing",
     "shipped",
     "delivered",
-    "completed",
     "cancelled",
   ];
 

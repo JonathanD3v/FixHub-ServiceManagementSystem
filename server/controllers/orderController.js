@@ -24,11 +24,18 @@ const mapOrderDto = (orderDoc) => {
 
   if (order.items && Array.isArray(order.items)) {
     order.items = order.items.map((item) => {
+      const populatedProduct = item.product || item.productId || null;
       const mapped = {
         _id: item._id,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.totalPrice,
+        productName: item.productName || populatedProduct?.name || "",
+        productImage:
+          item.productImage ||
+          populatedProduct?.mainImage ||
+          populatedProduct?.images?.[0] ||
+          "",
         productId: item.productId || item.product || null,
       };
       // Normalize product field for frontend compatibility
@@ -202,7 +209,7 @@ exports.createOrder = async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id)
       .populate("user", "name email")
-      .populate("items.productId", "name price images");
+      .populate("items.productId", "name price images mainImage");
 
     const responseOrder = mapOrderDto(populatedOrder);
 
@@ -233,7 +240,7 @@ exports.getOrders = async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate("items.productId", "name price images"),
+        .populate("items.productId", "name price images mainImage"),
       Order.countDocuments(query),
     ]);
 
@@ -275,7 +282,7 @@ exports.getOrder = async (req, res) => {
 
     const order = await Order.findOne(query)
       .populate("user", "name email")
-      .populate("items.productId", "name price images");
+      .populate("items.productId", "name price images mainImage");
 
     if (!order) {
       return res.status(404).json({ error: "Order not found" });
@@ -349,7 +356,7 @@ exports.updateOrderStatus = async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id)
       .populate("user", "name email")
-      .populate("items.productId", "name price images");
+      .populate("items.productId", "name price images mainImage");
 
     return res.json({
       status: "success",
@@ -409,7 +416,7 @@ exports.processRefund = async (req, res) => {
 
     const populatedOrder = await Order.findById(order._id)
       .populate("user", "name email")
-      .populate("items.productId", "name price images");
+      .populate("items.productId", "name price images mainImage");
 
     return res.json({
       status: "success",

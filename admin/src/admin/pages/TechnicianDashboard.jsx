@@ -29,7 +29,7 @@ const TechnicianDashboard = () => {
     const fetchTechnicianDashboard = async () => {
       try {
         const response = await getMethod("/admin/technician/dashboard");
-        setStats(response);
+        setStats(response?.data || response);
       } catch (error) {
         console.error("Error fetching technician dashboard data:", error);
       } finally {
@@ -207,7 +207,7 @@ const TechnicianDashboard = () => {
             My Service Requests
           </h2>
           <a
-            href="/admin/services"
+            href="/admin/service-requests"
             className="text-orange-600 hover:text-orange-800 font-medium text-sm"
           >
             View All →

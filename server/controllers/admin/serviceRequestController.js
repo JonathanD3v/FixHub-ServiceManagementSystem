@@ -3,6 +3,9 @@ const ServiceRequest = require("../../models/ServiceRequest");
 
 const getServiceRequestScope = (req) => {
   if (req.user?.role === "admin") return {};
+  if (req.user?.role === "technician") {
+    return { assignedTo: req.user._id };
+  }
   return {
     $or: [{ createdBy: req.user._id }, { assignedBy: req.user._id }],
   };
@@ -310,10 +313,17 @@ exports.updateServiceRequest = async (req, res) => {
       "partsCost",
       "status",
       "paymentStatus",
+      "technicianNotes",
     ];
+
+    const isTechnician = req.user?.role === "technician";
+    const technicianAllowedFields = ["status", "technicianNotes"];
 
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
+        if (isTechnician && !technicianAllowedFields.includes(field)) {
+          return;
+        }
         if (field === "paymentMethod") {
           request[field] =
             req.body[field] && req.body[field].trim() !== ""
@@ -325,7 +335,7 @@ exports.updateServiceRequest = async (req, res) => {
       }
     });
 
-    if (req.body.assistedTechnicianId !== undefined) {
+    if (!isTechnician && req.body.assistedTechnicianId !== undefined) {
       if (!req.body.assistedTechnicianId) {
         request.assignedTo = null;
         request.assignedBy = null;

@@ -3,38 +3,39 @@ import { Link } from "react-router-dom";
 
 const slides = [
   {
-    image: "/src/assets/images/3.png",
+    image: "/src/assets/images/4.jpg",
     title: "Welcome to FixHub",
     description: "Get Your Device Fixed Today!",
-    link: "/services",
   },
   {
-    image: "/src/assets/images/1.jpeg",
+    image: "/src/assets/images/5.jpg",
     title: "Fast & Reliable Device Repair Services",
     description:
       "We provide professional repair services for smartphones, laptops, and tablets. Our expert technicians ensure quick turnaround and high-quality service at affordable prices.",
-    link: "/products",
   },
   {
-    image: "/src/assets/images/2.png",
-    title: "Data Recovery & Software Solutions",
+    image: "/src/assets/images/6.jpg",
+    title: "Expert Repairs You Can Trust",
+    description: "From cracked screens to hardware issues, we fix your devices with precision and care.",
+  },
+  {
+    image: "/src/assets/images/7.jpg",
+    title: "Quality Parts & Professional Service",
+    description:
+      "We use high-quality replacement parts to ensure long-lasting performance for your devices.",
+  },
+  {
+    image: "/src/assets/images/8.jpg",
+    title: "Upgrade & Boost Your Device",
+    description: "",
+  },
+  {
+    image: "/src/assets/images/9.jpg",
+    title: "All-in-One Tech Repair Solutions",
     description:
       "Lost important files? Don’t worry. We offer secure data recovery and software troubleshooting to restore your valuable data safely.",
-    link: "/products",
   },
-  //   {
-  //     image: "/src/assets/images/online_shopping_powerpoint_themes_441526.jpg",
-  //     title: "New Arrivals",
-  //     description: "Check out our latest products",
-  //     link: "/products",
-  //   },
-  //   {
-  //     image:
-  //       "/src/assets/images/online_delivery_service_pitch_deck_startup_presentation_template_655517.jpg",
-  //     title: "Fast Delivery",
-  //     description: "Get your orders delivered quickly",
-  //     link: "/products",
-  //   },
+  
 ];
 
 const Slideshow = () => {
@@ -57,7 +58,7 @@ const Slideshow = () => {
   };
 
   return (
-    <div className="relative w-full h-[500px] overflow-hidden">
+    <div className="relative w-full h-[600px] overflow-hidden">
       {/* Slides */}
       <div
         className="relative w-full h-full transition-transform duration-500 ease-in-out"
