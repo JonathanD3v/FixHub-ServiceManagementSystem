@@ -41,7 +41,13 @@ const Sidebar = () => {
       name: "Reports",
       path: "/admin/reports",
       icon: "M9 17v-6m4 6V7m4 10v-3M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z",
-      roles: ["admin", "staff"],
+      roles: ["admin"],
+    },
+    {
+      name: "User Creation",
+      path: "/admin/user-management",
+      icon: "M18 9v3m0 0v3m0-3h3m-3 0h-3M5 20h8a2 2 0 002-2v-1a4 4 0 00-4-4H9a4 4 0 00-4 4v1a2 2 0 002 2zm6-12a4 4 0 11-8 0 4 4 0 018 0z",
+      roles: ["admin"],
     },
     {
       name: "Orders",

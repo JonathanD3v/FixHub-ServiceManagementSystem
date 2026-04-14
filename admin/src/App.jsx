@@ -21,6 +21,7 @@ import CustomerPage from "./admin/pages/Customer.jsx";
 import ServiceRequests from "./admin/pages/ServiceRequests.jsx";
 import Suppliers from "./admin/pages/Suppliers.jsx";
 import Reports from "./admin/pages/Reports.jsx";
+import UserManagement from "./admin/pages/UserManagement.jsx";
 
 const ADMIN_ACCESS_ROLES = ["admin", "staff", "technician"];
 
@@ -72,6 +73,20 @@ const PublicLoginRoute = ({ children }) => {
   return children;
 };
 
+const AdminOnlyRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (user?.role !== "admin") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <Router>
@@ -103,7 +118,22 @@ function App() {
             <Route path="services" element={<Services />} />
             <Route path="service-requests" element={<ServiceRequests />} />
             <Route path="suppliers" element={<Suppliers />} />
-            <Route path="reports" element={<Reports />} />
+            <Route
+              path="reports"
+              element={
+                <AdminOnlyRoute>
+                  <Reports />
+                </AdminOnlyRoute>
+              }
+            />
+            <Route
+              path="user-management"
+              element={
+                <AdminOnlyRoute>
+                  <UserManagement />
+                </AdminOnlyRoute>
+              }
+            />
             <Route path="orders" element={<Orders />} />
             <Route path="customers" element={<CustomerPage />} />
           </Route>

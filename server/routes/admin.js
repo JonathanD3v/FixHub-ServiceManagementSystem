@@ -30,7 +30,7 @@ router.use(restrictTo("admin", "staff", "technician"));
 // User management routes
 router.get("/users", userController.getAllUsers);
 router.get("/users/:id", userController.getUser);
-router.post("/users", userController.createUser);
+router.post("/users", restrictTo("admin"), userController.createUser);
 router.put("/users/:id", userController.updateUser);
 router.delete("/users/:id", userController.deleteUser);
 router.get("/roles", userController.getRoles);

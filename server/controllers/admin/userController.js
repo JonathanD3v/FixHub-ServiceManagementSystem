@@ -56,11 +56,20 @@ exports.getUser = catchAsync(async (req, res) => {
 
 // Create new user
 exports.createUser = catchAsync(async (req, res) => {
+    const allowedRoles = ["staff", "technician"];
+    const requestedRole = req.body.role || "staff";
+
+    if (!allowedRoles.includes(requestedRole)) {
+        throw new AppError("Role must be staff or technician", 400);
+    }
+
     const user = await User.create({
         name: req.body.name,
         email: req.body.email,
+        phone: req.body.phone,
         password: req.body.password,
-        role: req.body.role || 'user'
+        role: requestedRole,
+        address: req.body.address || {}
     });
 
     user.password = undefined;
