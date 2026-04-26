@@ -6,6 +6,7 @@ import {
   STAFF_DASHBOARD_API,
   SERVICE_REQUESTS_LIST_API,
   SERVICE_REQUEST_DETAIL_API,
+  SERVICES_API,
 } from "./constant.js";
 
 // Create a new service request
@@ -78,6 +79,17 @@ export const deleteServiceRequest = async (id) => {
     return await deleteMethod(SERVICE_REQUEST_DETAIL_API(id));
   } catch (error) {
     console.error("Error deleting service request:", error);
+    throw error;
+  }
+};
+
+// Get all available services for selection
+export const getServices = async () => {
+  try {
+    const response = await getMethod(SERVICES_API);
+    return response;
+  } catch (error) {
+    console.error("Error fetching services:", error);
     throw error;
   }
 };

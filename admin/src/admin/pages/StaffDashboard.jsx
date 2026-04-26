@@ -6,6 +6,7 @@ import {
   assignServiceRequest,
   getPendingServiceRequests,
   getStaffDashboardStats,
+  getServices,
 } from "../services/serviceRequestService.js";
 import DashboardPresenter from "../presenters/DashboardPresenter.js";
 
@@ -36,6 +37,7 @@ const StaffDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [services, setServices] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedTechnician, setSelectedTechnician] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
@@ -57,6 +59,10 @@ const StaffDashboard = () => {
     paymentMethod: "",
     laborCost: "",
     partsCost: "",
+    serviceId: "",
+    serviceName: "",
+    servicePrice: "",
+    estimatedTime: "",
   });
   const presenter = new DashboardPresenter(stats);
 
@@ -128,7 +134,7 @@ const StaffDashboard = () => {
     }
   }, [activeTab]);
 
-  // Fetch technicians list
+  // Fetch technicians on mount
   useEffect(() => {
     const fetchTechnicians = async () => {
       try {
@@ -143,10 +149,38 @@ const StaffDashboard = () => {
       }
     };
 
-    if (showAssignModal || showCreateModal) {
-      fetchTechnicians();
-    }
-  }, [showAssignModal, showCreateModal]);
+    fetchTechnicians();
+  }, []);
+
+  // Fetch services on component mount
+  useEffect(() => {
+    const fetchServicesData = async () => {
+      try {
+        const servicesResponse = await getServices();
+        console.log("Services API Response:", servicesResponse);
+
+        // Handle different response structures
+        let servicesList = [];
+        if (Array.isArray(servicesResponse)) {
+          servicesList = servicesResponse;
+        } else if (servicesResponse?.data) {
+          if (Array.isArray(servicesResponse.data)) {
+            servicesList = servicesResponse.data;
+          } else if (Array.isArray(servicesResponse.data?.services)) {
+            servicesList = servicesResponse.data.services;
+          }
+        }
+
+        console.log("Processed Services List:", servicesList);
+        setServices(servicesList);
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setServices([]);
+      }
+    };
+
+    fetchServicesData();
+  }, []);
 
   // Handle assign request
   const handleAssignRequest = async () => {
@@ -195,20 +229,35 @@ const StaffDashboard = () => {
       !formData.customerName ||
       !formData.customerPhone ||
       !formData.deviceType ||
-      !formData.issueDescription
+      !formData.issueDescription ||
+      !formData.serviceId
     ) {
-      setErrorMessage("Please fill in all required fields");
+      setErrorMessage(
+        "Please fill in all required fields including service selection",
+      );
       return;
     }
 
     setIsCreating(true);
     try {
       const payload = {
-        ...formData,
+        customerName: formData.customerName,
+        customerPhone: formData.customerPhone,
+        customerEmail: formData.customerEmail,
+        deviceType: formData.deviceType,
+        deviceBrand: formData.deviceBrand,
+        deviceModel: formData.deviceModel,
+        issueDescription: formData.issueDescription,
+        serviceId: formData.serviceId,
+        serviceName: formData.serviceName,
+        servicePrice: formData.servicePrice,
+        estimatedTime: formData.estimatedTime,
         laborCost:
           formData.laborCost === "" ? 0 : parseFloat(formData.laborCost) || 0,
         partsCost:
           formData.partsCost === "" ? 0 : parseFloat(formData.partsCost) || 0,
+        paymentMethod: formData.paymentMethod,
+        assistedTechnicianId: formData.assistedTechnicianId || undefined,
       };
       const response = await createServiceRequest(payload);
 
@@ -231,6 +280,10 @@ const StaffDashboard = () => {
           paymentMethod: "",
           laborCost: "",
           partsCost: "",
+          serviceId: "",
+          serviceName: "",
+          servicePrice: "",
+          estimatedTime: "",
         });
         // Refresh dashboard stats
         fetchStaffDashboard().catch((error) => {
@@ -244,6 +297,28 @@ const StaffDashboard = () => {
       );
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  // Handle service selection
+  const handleServiceChange = (serviceId) => {
+    const selectedService = services.find((s) => s._id === serviceId);
+    if (selectedService) {
+      setFormData({
+        ...formData,
+        serviceId: serviceId,
+        serviceName: selectedService.name,
+        servicePrice: selectedService.price,
+        estimatedTime: selectedService.estimatedTime,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        serviceId: "",
+        serviceName: "",
+        servicePrice: "",
+        estimatedTime: "",
+      });
     }
   };
 
@@ -453,7 +528,9 @@ const StaffDashboard = () => {
             {activeTab === "service" && (
               <>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs text-slate-500">Total Service Requests</p>
+                  <p className="text-xs text-slate-500">
+                    Total Service Requests
+                  </p>
                   <p className="text-xl font-semibold text-slate-900">
                     {stats.serviceRequests.length}
                   </p>
@@ -481,7 +558,9 @@ const StaffDashboard = () => {
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <p className="text-xs text-slate-500">Estimated Queue Value</p>
+                  <p className="text-xs text-slate-500">
+                    Estimated Queue Value
+                  </p>
                   <p className="text-xl font-semibold text-slate-900">
                     {presenter.money(
                       pendingRequests.reduce(
@@ -496,7 +575,8 @@ const StaffDashboard = () => {
                   <p className="text-xl font-semibold text-cyan-800">
                     {
                       pendingRequests.filter(
-                        (request) => !request.assignedTo && request.status === "pending",
+                        (request) =>
+                          !request.assignedTo && request.status === "pending",
                       ).length
                     }
                   </p>
@@ -631,7 +711,9 @@ const StaffDashboard = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                             {request.deviceType || "N/A"}
-                            {request.deviceBrand ? ` - ${request.deviceBrand}` : ""}
+                            {request.deviceBrand
+                              ? ` - ${request.deviceBrand}`
+                              : ""}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                             {request.assignedTo?.name || "Unassigned"}
@@ -1136,7 +1218,8 @@ const StaffDashboard = () => {
 
             <div className="p-6">
               <div className="mb-5 bg-cyan-50 border border-cyan-200 rounded-xl px-4 py-3 text-sm text-cyan-900">
-                Fields with <span className="font-semibold">*</span> are required.
+                Fields with <span className="font-semibold">*</span> are
+                required.
               </div>
 
               <form onSubmit={handleCreateRequest} className="space-y-5">
@@ -1239,7 +1322,10 @@ const StaffDashboard = () => {
                       <select
                         value={formData.deviceType}
                         onChange={(e) =>
-                          setFormData({ ...formData, deviceType: e.target.value })
+                          setFormData({
+                            ...formData,
+                            deviceType: e.target.value,
+                          })
                         }
                         className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       >
@@ -1285,6 +1371,72 @@ const StaffDashboard = () => {
                         placeholder="iPhone 14, Galaxy S23, etc."
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Service Selection */}
+                <div className="bg-slate-50/80 rounded-xl border border-slate-200 p-4">
+                  <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                      />
+                    </svg>
+                    Service Type *
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Select Service *
+                      </label>
+                      <select
+                        value={formData.serviceId}
+                        onChange={(e) => handleServiceChange(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      >
+                        <option value="">-- Select a Service --</option>
+                        {services.map((service) => (
+                          <option key={service._id} value={service._id}>
+                            {service.name} - {service.category} (
+                            {service.price.toFixed(2)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {formData.serviceId && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Service Price
+                          </label>
+                          <input
+                            type="text"
+                            value={`${formData.servicePrice ? formData.servicePrice.toFixed(2) : "0.00"}`}
+                            disabled
+                            className="w-full bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 cursor-not-allowed"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Est. Time (minutes)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.estimatedTime || "0"}
+                            disabled
+                            className="w-full bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5 text-sm text-slate-700 cursor-not-allowed"
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 

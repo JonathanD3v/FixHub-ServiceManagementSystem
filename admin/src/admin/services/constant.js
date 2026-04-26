@@ -58,6 +58,9 @@ export const MEDIA_UPLOAD_API = `${domain}/api/admin/media/upload`;
 export const MEDIA_API = `${domain}/api/admin/media`;
 export const MEDIA_DETAIL_API = (id) => `${domain}/api/admin/media/${id}`;
 
+// Services APIs
+export const SERVICES_API = `${domain}/api/admin/services`;
+
 // Service Request Management APIs
 export const SERVICE_REQUESTS_API = `${domain}/api/admin/staff/create-request`;
 export const ASSIGN_SERVICE_REQUEST_API = `${domain}/api/admin/staff/assign-request`;

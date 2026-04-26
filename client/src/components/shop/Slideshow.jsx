@@ -3,39 +3,22 @@ import { Link } from "react-router-dom";
 
 const slides = [
   {
-    image: "/src/assets/images/4.jpg",
+    image: "/src/assets/images/1.jpeg",
     title: "Welcome to FixHub",
     description: "Get Your Device Fixed Today!",
   },
   {
-    image: "/src/assets/images/5.jpg",
+    image: "/src/assets/images/2.png",
     title: "Fast & Reliable Device Repair Services",
     description:
       "We provide professional repair services for smartphones, laptops, and tablets. Our expert technicians ensure quick turnaround and high-quality service at affordable prices.",
   },
   {
-    image: "/src/assets/images/6.jpg",
+    image: "/src/assets/images/3.png",
     title: "Expert Repairs You Can Trust",
-    description: "From cracked screens to hardware issues, we fix your devices with precision and care.",
-  },
-  {
-    image: "/src/assets/images/7.jpg",
-    title: "Quality Parts & Professional Service",
     description:
-      "We use high-quality replacement parts to ensure long-lasting performance for your devices.",
+      "From cracked screens to hardware issues, we fix your devices with precision and care.",
   },
-  {
-    image: "/src/assets/images/8.jpg",
-    title: "Upgrade & Boost Your Device",
-    description: "",
-  },
-  {
-    image: "/src/assets/images/9.jpg",
-    title: "All-in-One Tech Repair Solutions",
-    description:
-      "Lost important files? Don’t worry. We offer secure data recovery and software troubleshooting to restore your valuable data safely.",
-  },
-  
 ];
 
 const Slideshow = () => {

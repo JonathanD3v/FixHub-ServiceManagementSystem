@@ -6,6 +6,7 @@ import {
   getAllServiceRequests,
   getPendingServiceRequests,
   updateServiceRequest,
+  getServices,
 } from "../services/serviceRequestService.js";
 import DashboardPresenter from "../presenters/DashboardPresenter.js";
 import { getMethod } from "../services/index.jsx";
@@ -18,6 +19,7 @@ const ServiceRequests = () => {
   const [serviceRequests, setServiceRequests] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -39,6 +41,10 @@ const ServiceRequests = () => {
     paymentMethod: "",
     status: "pending",
     technicianNotes: "",
+    serviceId: "",
+    serviceName: "",
+    servicePrice: "",
+    estimatedTime: "",
   });
   const presenter = new DashboardPresenter({});
   const getStatusStyle = (status) => {
@@ -52,20 +58,40 @@ const ServiceRequests = () => {
   const loadData = async () => {
     const requestsPromise = getAllServiceRequests();
     const usersPromise = getMethod("/admin/users");
+    const servicesPromise = getServices();
     const pendingPromise = isTechnician
       ? Promise.resolve({ data: { pendingRequests: [] } })
       : getPendingServiceRequests();
-    const [requestsResponse, usersResponse, pendingResponse] = await Promise.all([
-      requestsPromise,
-      usersPromise,
-      pendingPromise,
-    ]);
+    const [requestsResponse, usersResponse, servicesResponse, pendingResponse] =
+      await Promise.all([
+        requestsPromise,
+        usersPromise,
+        servicesPromise,
+        pendingPromise,
+      ]);
     setServiceRequests(requestsResponse?.data || []);
     setPendingRequests(
-      pendingResponse?.data?.pendingRequests || pendingResponse?.pendingRequests || [],
+      pendingResponse?.data?.pendingRequests ||
+        pendingResponse?.pendingRequests ||
+        [],
     );
     const allUsers = usersResponse?.data?.users || [];
     setTechnicians(allUsers.filter((u) => u.role === "technician"));
+
+    // Safely extract services array from response with debug logging
+    console.log("Services API Response:", servicesResponse);
+    let servicesList = [];
+    if (Array.isArray(servicesResponse)) {
+      servicesList = servicesResponse;
+    } else if (servicesResponse?.data) {
+      if (Array.isArray(servicesResponse.data)) {
+        servicesList = servicesResponse.data;
+      } else if (Array.isArray(servicesResponse.data?.services)) {
+        servicesList = servicesResponse.data.services;
+      }
+    }
+    console.log("Processed Services List:", servicesList);
+    setServices(servicesList);
   };
 
   useEffect(() => {
@@ -108,6 +134,10 @@ const ServiceRequests = () => {
       paymentMethod: "",
       status: "pending",
       technicianNotes: "",
+      serviceId: "",
+      serviceName: "",
+      servicePrice: "",
+      estimatedTime: "",
     });
   };
 
@@ -138,6 +168,16 @@ const ServiceRequests = () => {
       paymentMethod: item.paymentMethod || "",
       status: item.status || "pending",
       technicianNotes: item.technicianNotes || "",
+      serviceId: item.serviceId || "",
+      serviceName: item.serviceName || "",
+      servicePrice:
+        item.servicePrice !== undefined && item.servicePrice !== null
+          ? item.servicePrice
+          : "",
+      estimatedTime:
+        item.estimatedTime !== undefined && item.estimatedTime !== null
+          ? item.estimatedTime
+          : "",
     });
     setShowModal(true);
   };
@@ -153,9 +193,10 @@ const ServiceRequests = () => {
       (!formData.customerName ||
         !formData.customerPhone ||
         !formData.deviceType ||
-        !formData.issueDescription)
+        !formData.issueDescription ||
+        !formData.serviceId)
     ) {
-      toast.error("Please fill required fields.");
+      toast.error("Please fill required fields including service selection.");
       return;
     }
     try {
@@ -165,11 +206,28 @@ const ServiceRequests = () => {
             technicianNotes: formData.technicianNotes || "",
           }
         : {
-            ...formData,
+            customerName: formData.customerName,
+            customerPhone: formData.customerPhone,
+            customerEmail: formData.customerEmail,
+            deviceType: formData.deviceType,
+            deviceBrand: formData.deviceBrand,
+            deviceModel: formData.deviceModel,
+            issueDescription: formData.issueDescription,
+            serviceId: formData.serviceId,
+            serviceName: formData.serviceName,
+            servicePrice: formData.servicePrice,
+            estimatedTime: formData.estimatedTime,
+            assistedTechnicianId: formData.assistedTechnicianId || undefined,
             laborCost:
-              formData.laborCost === "" ? 0 : parseFloat(formData.laborCost) || 0,
+              formData.laborCost === ""
+                ? 0
+                : parseFloat(formData.laborCost) || 0,
             partsCost:
-              formData.partsCost === "" ? 0 : parseFloat(formData.partsCost) || 0,
+              formData.partsCost === ""
+                ? 0
+                : parseFloat(formData.partsCost) || 0,
+            paymentMethod: formData.paymentMethod,
+            status: formData.status,
           };
       if (editingId) {
         await updateServiceRequest(editingId, payload);
@@ -197,7 +255,31 @@ const ServiceRequests = () => {
       toast.success("Service request deleted successfully.");
       await loadData();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to delete request.");
+      toast.error(
+        error?.response?.data?.message || "Failed to delete request.",
+      );
+    }
+  };
+
+  // Handle service selection
+  const handleServiceChange = (serviceId) => {
+    const selectedService = services.find((s) => s._id === serviceId);
+    if (selectedService) {
+      setFormData({
+        ...formData,
+        serviceId: serviceId,
+        serviceName: selectedService.name,
+        servicePrice: selectedService.price,
+        estimatedTime: selectedService.estimatedTime,
+      });
+    } else {
+      setFormData({
+        ...formData,
+        serviceId: "",
+        serviceName: "",
+        servicePrice: "",
+        estimatedTime: "",
+      });
     }
   };
 
@@ -214,12 +296,16 @@ const ServiceRequests = () => {
       setSelectedTechnician("");
       await loadData();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to assign request.");
+      toast.error(
+        error?.response?.data?.message || "Failed to assign request.",
+      );
     }
   };
 
   const summary = useMemo(() => {
-    const assigned = serviceRequests.filter((item) => item.status === "assigned").length;
+    const assigned = serviceRequests.filter(
+      (item) => item.status === "assigned",
+    ).length;
     const completed = serviceRequests.filter(
       (item) => item.status === "completed",
     ).length;
@@ -231,7 +317,8 @@ const ServiceRequests = () => {
       total: serviceRequests.length,
       assigned,
       completed,
-      pending: serviceRequests.filter((item) => item.status === "pending").length,
+      pending: serviceRequests.filter((item) => item.status === "pending")
+        .length,
       revenue,
     };
   }, [serviceRequests]);
@@ -248,7 +335,9 @@ const ServiceRequests = () => {
     <div className="space-y-6">
       <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 p-6 text-white shadow-xl">
         <p className="text-sm text-blue-100">Service Desk</p>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-semibold">Service Requests</h1>
+        <h1 className="mt-1 text-2xl sm:text-3xl font-semibold">
+          Service Requests
+        </h1>
         <p className="mt-2 text-sm text-blue-100/90">
           Overview of your assigned and pending service requests.
         </p>
@@ -256,23 +345,41 @@ const ServiceRequests = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">Total Requests</p>
-          <p className="text-2xl font-semibold text-slate-900 mt-1">{summary.total}</p>
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Total Requests
+          </p>
+          <p className="text-2xl font-semibold text-slate-900 mt-1">
+            {summary.total}
+          </p>
         </div>
         <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-blue-700">Assigned</p>
-          <p className="text-2xl font-semibold text-blue-800 mt-1">{summary.assigned}</p>
+          <p className="text-xs uppercase tracking-wide text-blue-700">
+            Assigned
+          </p>
+          <p className="text-2xl font-semibold text-blue-800 mt-1">
+            {summary.assigned}
+          </p>
         </div>
         <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-emerald-700">Completed</p>
-          <p className="text-2xl font-semibold text-emerald-800 mt-1">{summary.completed}</p>
+          <p className="text-xs uppercase tracking-wide text-emerald-700">
+            Completed
+          </p>
+          <p className="text-2xl font-semibold text-emerald-800 mt-1">
+            {summary.completed}
+          </p>
         </div>
         <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-amber-700">Pending Queue</p>
-          <p className="text-2xl font-semibold text-amber-800 mt-1">{summary.pending}</p>
+          <p className="text-xs uppercase tracking-wide text-amber-700">
+            Pending Queue
+          </p>
+          <p className="text-2xl font-semibold text-amber-800 mt-1">
+            {summary.pending}
+          </p>
         </div>
         <div className="bg-white/90 backdrop-blur-sm overflow-hidden shadow-lg rounded-xl border border-slate-200/70 p-4">
-          <p className="text-xs uppercase tracking-wide text-violet-700">Total Value</p>
+          <p className="text-xs uppercase tracking-wide text-violet-700">
+            Total Value
+          </p>
           <p className="text-2xl font-semibold text-violet-900 mt-1">
             {presenter.money(summary.revenue)}
           </p>
@@ -281,61 +388,69 @@ const ServiceRequests = () => {
 
       {!isTechnician && (
         <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/70 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Pending Requests to Assign
-          </h2>
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-            {pendingRequests.length} Pending
-          </span>
-        </div>
-        <div className="p-5">
-          {pendingRequests.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {pendingRequests.slice(0, 6).map((request) => (
-                <div
-                  key={request._id}
-                  className="border border-slate-200 rounded-xl p-4 bg-slate-50 hover:bg-white transition"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-semibold text-slate-900">{request.customerName}</p>
-                      <p className="text-xs text-slate-500">{request.requestNumber}</p>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      pending
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {request.deviceType}
-                    {request.deviceBrand ? ` - ${request.deviceBrand}` : ""}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                    {request.issueDescription}
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSelectedRequest(request);
-                      setSelectedTechnician("");
-                      setShowAssignModal(true);
-                    }}
-                    className="mt-3 w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+          <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">
+              Pending Requests to Assign
+            </h2>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+              {pendingRequests.length} Pending
+            </span>
+          </div>
+          <div className="p-5">
+            {pendingRequests.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {pendingRequests.slice(0, 6).map((request) => (
+                  <div
+                    key={request._id}
+                    className="border border-slate-200 rounded-xl p-4 bg-slate-50 hover:bg-white transition"
                   >
-                    Assign Technician
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-slate-500">No pending requests to assign.</p>
-          )}
-        </div>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold text-slate-900">
+                          {request.customerName}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {request.requestNumber}
+                        </p>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        pending
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600">
+                      {request.deviceType}
+                      {request.deviceBrand ? ` - ${request.deviceBrand}` : ""}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                      {request.issueDescription}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setSelectedTechnician("");
+                        setShowAssignModal(true);
+                      }}
+                      className="mt-3 w-full px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+                    >
+                      Assign Technician
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">
+                No pending requests to assign.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
       <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200/70 overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-4 flex items-center justify-between bg-white">
-          <h2 className="text-lg font-semibold text-slate-900">Service Requests</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            Service Requests
+          </h2>
           {!isTechnician && (
             <button
               onClick={openCreate}
@@ -349,28 +464,58 @@ const ServiceRequests = () => {
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-100/80">
               <tr>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Request #</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Customer</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Device</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Issue</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Technician</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Status</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Amount</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Assigned By</th>
-                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">Actions</th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Request #
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Customer
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Device
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Issue
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Service
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Technician
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Status
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Amount
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Assigned By
+                </th>
+                <th className="px-5 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {serviceRequests.length ? (
                 serviceRequests.map((item) => (
                   <tr key={item._id}>
-                    <td className="px-5 py-3 text-sm text-slate-900">{item.requestNumber}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700">{item.customerName}</td>
+                    <td className="px-5 py-3 text-sm text-slate-900">
+                      {item.requestNumber}
+                    </td>
+                    <td className="px-5 py-3 text-sm text-slate-700">
+                      {item.customerName}
+                    </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
                       {item.deviceType}
                       {item.deviceBrand ? ` - ${item.deviceBrand}` : ""}
                     </td>
-                    <td className="px-5 py-3 text-sm text-slate-700">{item.issueDescription}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700">
+                      {item.issueDescription}
+                    </td>
+                    <td className="px-5 py-3 text-sm text-slate-700">
+                      {item.serviceName}
+                    </td>
                     <td className="px-5 py-3 text-sm text-slate-700">
                       {item.assignedTo?.name || "Unassigned"}
                     </td>
@@ -409,7 +554,10 @@ const ServiceRequests = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="px-5 py-6 text-center text-sm text-slate-500">
+                  <td
+                    colSpan="8"
+                    className="px-5 py-6 text-center text-sm text-slate-500"
+                  >
                     No service requests found.
                   </td>
                 </tr>
@@ -440,7 +588,9 @@ const ServiceRequests = () => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-white">
-                  {editingId ? "Edit Service Request" : "Create Service Request"}
+                  {editingId
+                    ? "Edit Service Request"
+                    : "Create Service Request"}
                 </h3>
               </div>
               <button
@@ -481,119 +631,188 @@ const ServiceRequests = () => {
                     placeholder="Technician notes"
                     value={formData.technicianNotes}
                     onChange={(e) =>
-                      setFormData({ ...formData, technicianNotes: e.target.value })
+                      setFormData({
+                        ...formData,
+                        technicianNotes: e.target.value,
+                      })
                     }
                   />
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
-                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                    Customer
-                  </h4>
-                  <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="Customer Name *"
-                  value={formData.customerName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerName: e.target.value })
-                  }
-                />
-                <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="Customer Phone *"
-                  value={formData.customerPhone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerPhone: e.target.value })
-                  }
-                />
-                <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="Customer Email"
-                  value={formData.customerEmail}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerEmail: e.target.value })
-                  }
-                />
-                </div>
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                      <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                        Customer
+                      </h4>
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Customer Name *"
+                        value={formData.customerName}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            customerName: e.target.value,
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Customer Phone *"
+                        value={formData.customerPhone}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            customerPhone: e.target.value,
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Customer Email"
+                        value={formData.customerEmail}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            customerEmail: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
 
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
-                  <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
-                    Device & Assignment
-                  </h4>
-                  <select
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  value={formData.deviceType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deviceType: e.target.value })
-                  }
-                >
-                  <option value="Phone">Phone</option>
-                  <option value="Laptop">Laptop</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="Computer">Computer</option>
-                  <option value="Other">Other</option>
-                </select>
-                <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="Device Brand"
-                  value={formData.deviceBrand}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deviceBrand: e.target.value })
-                  }
-                />
-                <input
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  placeholder="Device Model"
-                  value={formData.deviceModel}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deviceModel: e.target.value })
-                  }
-                />
-                  <select
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  value={formData.assistedTechnicianId}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      assistedTechnicianId: e.target.value,
-                    })
-                  }
-                >
-                  <option value="">No Technician</option>
-                  {technicians.map((tech) => (
-                    <option key={tech._id} value={tech._id}>
-                      {tech.name}
-                    </option>
-                  ))}
-                </select>
-                  <select
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={formData.paymentMethod}
-                    onChange={(e) =>
-                      setFormData({ ...formData, paymentMethod: e.target.value })
-                    }
-                  >
-                    <option value="">Payment Method (Optional)</option>
-                    <option value="cash">cash</option>
-                    <option value="card">card</option>
-                    <option value="bank">bank</option>
-                  </select>
-                  <select
-                    className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  value={formData.status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, status: e.target.value })
-                  }
-                >
-                  <option value="pending">pending</option>
-                  <option value="assigned">assigned</option>
-                  <option value="in-progress">in-progress</option>
-                  <option value="completed">completed</option>
-                  <option value="cancelled">cancelled</option>
-                </select>
-              </div>
+                    <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                      <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                        Device & Assignment
+                      </h4>
+                      <select
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        value={formData.deviceType}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            deviceType: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="Phone">Phone</option>
+                        <option value="Laptop">Laptop</option>
+                        <option value="Tablet">Tablet</option>
+                        <option value="Computer">Computer</option>
+                        <option value="Other">Other</option>
+                      </select>
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Device Brand"
+                        value={formData.deviceBrand}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            deviceBrand: e.target.value,
+                          })
+                        }
+                      />
+                      <input
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        placeholder="Device Model"
+                        value={formData.deviceModel}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            deviceModel: e.target.value,
+                          })
+                        }
+                      />
+                      <select
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        value={formData.assistedTechnicianId}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            assistedTechnicianId: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">No Technician</option>
+                        {technicians.map((tech) => (
+                          <option key={tech._id} value={tech._id}>
+                            {tech.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        value={formData.paymentMethod}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paymentMethod: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Payment Method (Optional)</option>
+                        <option value="cash">cash</option>
+                        <option value="card">card</option>
+                        <option value="bank">bank</option>
+                      </select>
+                      <select
+                        className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        value={formData.status}
+                        onChange={(e) =>
+                          setFormData({ ...formData, status: e.target.value })
+                        }
+                      >
+                        <option value="pending">pending</option>
+                        <option value="assigned">assigned</option>
+                        <option value="in-progress">in-progress</option>
+                        <option value="completed">completed</option>
+                        <option value="cancelled">cancelled</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
+                    <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+                      Service Type *
+                    </h4>
+                    <select
+                      className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      value={formData.serviceId}
+                      onChange={(e) => handleServiceChange(e.target.value)}
+                    >
+                      <option value="">-- Select a Service --</option>
+                      {services.map((service) => (
+                        <option key={service._id} value={service._id}>
+                          {service.name} - {service.category} (
+                          {service.price.toFixed(2)})
+                        </option>
+                      ))}
+                    </select>
+                    {formData.serviceId && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                            Service Price
+                          </label>
+                          <input
+                            type="text"
+                            value={`${formData.servicePrice ? formData.servicePrice.toFixed(2) : "0.00"}`}
+                            disabled
+                            className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-emerald-50 text-slate-700 cursor-not-allowed"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                            Est. Time (minutes)
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.estimatedTime || "0"}
+                            disabled
+                            className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 bg-emerald-50 text-slate-700 cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 rounded-2xl border border-slate-200 bg-slate-50/90 p-4">
@@ -606,7 +825,10 @@ const ServiceRequests = () => {
                         placeholder="0.00"
                         value={formData.laborCost}
                         onChange={(e) =>
-                          setFormData({ ...formData, laborCost: e.target.value })
+                          setFormData({
+                            ...formData,
+                            laborCost: e.target.value,
+                          })
                         }
                       />
                     </div>
@@ -619,7 +841,10 @@ const ServiceRequests = () => {
                         placeholder="0.00"
                         value={formData.partsCost}
                         onChange={(e) =>
-                          setFormData({ ...formData, partsCost: e.target.value })
+                          setFormData({
+                            ...formData,
+                            partsCost: e.target.value,
+                          })
                         }
                       />
                     </div>
@@ -635,7 +860,10 @@ const ServiceRequests = () => {
                     placeholder="Issue Description *"
                     value={formData.issueDescription}
                     onChange={(e) =>
-                      setFormData({ ...formData, issueDescription: e.target.value })
+                      setFormData({
+                        ...formData,
+                        issueDescription: e.target.value,
+                      })
                     }
                   />
                   <p className="text-xs text-slate-500">
@@ -682,7 +910,8 @@ const ServiceRequests = () => {
               <div className="text-sm">
                 <p className="text-slate-500">Request</p>
                 <p className="font-semibold text-slate-900">
-                  {selectedRequest?.requestNumber} - {selectedRequest?.customerName}
+                  {selectedRequest?.requestNumber} -{" "}
+                  {selectedRequest?.customerName}
                 </p>
               </div>
               <select
